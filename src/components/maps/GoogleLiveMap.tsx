@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Compass, Radio, MapPin, AlertTriangle, Home, Users } from 'lucide-react';
 import TacticalMap from '@/components/TacticalMap';
 import { DisasterIncident, SOSRequest, Shelter, ResponderTeam } from '@/lib/types';
 
@@ -20,8 +19,8 @@ export default function GoogleLiveMap({
   sosRequests,
   shelters,
   responders,
-  center = { lat: 45.5152, lng: -122.6784 },
-  zoom = 12,
+  center = { lat: 23.8103, lng: 90.4125 }, // Dhaka, Bangladesh
+  zoom = 7,
   onDispatchSOS,
 }: GoogleLiveMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -58,46 +57,11 @@ export default function GoogleLiveMap({
         { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#38bdf8' }] },
         { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
         { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
-        { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0284c7' }] },
+        { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0369a1' }] },
       ],
     });
+  }, [googleMapsLoaded, center, zoom]);
 
-    // Add markers for SOS
-    sosRequests.forEach((sos) => {
-      new google.maps.Marker({
-        position: { lat: sos.location.lat, lng: sos.location.lng },
-        map,
-        title: `${sos.reporterName} (${sos.priority})`,
-      });
-    });
-
-    // Add markers for Shelters
-    shelters.forEach((she) => {
-      new google.maps.Marker({
-        position: { lat: she.lat, lng: she.lng },
-        map,
-        title: she.name,
-      });
-    });
-  }, [googleMapsLoaded, disasters, sosRequests, shelters, responders, center, zoom]);
-
-  // If Google Maps API key is configured and loaded
-  if (apiKey && googleMapsLoaded) {
-    return (
-      <div className="relative w-full h-[650px] rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl">
-        <div ref={mapRef} className="w-full h-full" />
-      </div>
-    );
-  }
-
-  // Tactical Radar Map
-  return (
-    <TacticalMap
-      disasters={disasters}
-      sosRequests={sosRequests}
-      shelters={shelters}
-      responders={responders}
-      onDispatchSOS={onDispatchSOS}
-    />
-  );
+  // Always return the rich, custom Bangladesh TacticalMap with SVG layers, real assets and filters
+  return <TacticalMap />;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import {
   Truck,
   CheckCircle2,
@@ -13,70 +14,71 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { ReliefDistribution } from '@/lib/types';
+import { ASSETS } from '@/lib/assets';
 
 const mockConvoys: ReliefDistribution[] = [
   {
     id: 'dist-01',
-    ngoId: 'ngo-redcross',
-    ngoName: 'Red Cross Logistics Task Force',
+    ngoId: 'ngo-bdrcs',
+    ngoName: 'Bangladesh Red Crescent Society (BDRCS) Logistics Wing',
     itemCategory: 'water',
-    itemName: 'Purification Water Bladders (10L)',
-    quantityDistributed: 1200,
+    itemName: 'Emergency Water Purification Tablets & 10L Jerrycans (অ্যাকুয়াট্যাব)',
+    quantityDistributed: 35000,
     unit: 'units',
-    targetZone: 'Lincoln High Gymnasium Safe Zone',
+    targetZone: 'Sunamganj Govt Jubilee High School Flood Shelter',
     dispatchedAt: '25m ago',
     status: 'in_transit',
   },
   {
     id: 'dist-02',
-    ngoId: 'ngo-doctors',
-    ngoName: 'Doctors Without Borders Field Team',
-    itemCategory: 'medical',
-    itemName: 'Hemostatic Trauma Gauze & Tourniquets',
-    quantityDistributed: 400,
-    unit: 'kits',
-    targetZone: 'Cascadia Civic Arena Main Triage',
-    dispatchedAt: '50m ago',
+    ngoId: 'ngo-brac',
+    ngoName: 'BRAC Humanitarian Crisis Fleet',
+    itemCategory: 'rations',
+    itemName: 'Family Emergency Dry Food Packs (চিঁড়া, গুড়, ওরস্যালাইন ও বিস্কুট)',
+    quantityDistributed: 4200,
+    unit: 'packs',
+    targetZone: 'Gowainghat Upazila Parishad Relief Center, Sylhet',
+    dispatchedAt: '45m ago',
     status: 'delivered',
-    verifiedBy: 'Dr. Raymond Kim (Chief Medical Officer)',
+    verifiedBy: 'Dr. Farhana Yasmin (Upazila Health Officer)',
   },
   {
     id: 'dist-03',
-    ngoId: 'ngo-worldfood',
-    ngoName: 'Global Food Relief Coalition',
-    itemCategory: 'rations',
-    itemName: 'Emergency Ready-to-Eat Ration Packs (MREs)',
-    quantityDistributed: 4500,
-    unit: 'meals',
-    targetZone: 'Redwood Valley Evacuation Shelter',
-    dispatchedAt: '1h 20m ago',
+    ngoId: 'ngo-dcht',
+    ngoName: 'Dhaka Community Hospital Trust (DCHT) Mobile Clinic',
+    itemCategory: 'medical',
+    itemName: 'Polyvalent Snake Antivenom & Pediatric Trauma Kits',
+    quantityDistributed: 850,
+    unit: 'kits',
+    targetZone: 'Companiganj Upazila Health Complex, Sylhet',
+    dispatchedAt: '1h 10m ago',
     status: 'delivered',
-    verifiedBy: 'Sarah Chen (Shelter Lead)',
+    verifiedBy: 'Dr. Kamal Hossain (Civil Surgeon Representative)',
   },
   {
     id: 'dist-04',
-    ngoId: 'ngo-humanity',
-    ngoName: 'OpenHumanity Emergency Response',
+    ngoId: 'ngo-anjuman',
+    ngoName: 'Anjuman Mufidul Islam Disaster Wing',
     itemCategory: 'tents',
-    itemName: 'All-Weather Disaster Family Tents (8-Person)',
-    quantityDistributed: 150,
+    itemName: 'Reinforced Weatherproof Family Relief Tents (8-Person)',
+    quantityDistributed: 280,
     unit: 'tents',
-    targetZone: 'Fluvial District High Ground Staging',
-    dispatchedAt: '1h 45m ago',
+    targetZone: "Kutubdia Multi-Purpose Cyclone Shelter, Cox's Bazar",
+    dispatchedAt: '1h 50m ago',
     status: 'in_transit',
   },
   {
     id: 'dist-05',
-    ngoId: 'ngo-telecom',
-    ngoName: 'Telecom Without Borders',
+    ngoId: 'ngo-jaago',
+    ngoName: 'JAAGO Foundation Youth Volunteer Corps',
     itemCategory: 'generators',
-    itemName: 'Mobile Solar Battery Inverters & Mesh Wi-Fi',
-    quantityDistributed: 8,
-    unit: 'units',
-    targetZone: 'Transit Hall Auxiliary Command Post',
+    itemName: 'Solar Mobile Inverter Generators & Water Desalination Skids',
+    quantityDistributed: 12,
+    unit: 'generators',
+    targetZone: 'Chilmari River Ghat Embankment, Kurigram',
     dispatchedAt: '3h ago',
     status: 'delivered',
-    verifiedBy: 'Specialist Mia Zhang',
+    verifiedBy: 'Korvi Rakshand (JAAGO Field Coordinator)',
   },
 ];
 
@@ -98,31 +100,65 @@ export default function DistributionPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-        <div>
-          <div className="flex items-center space-x-2 text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">
-            <Truck className="w-4 h-4" />
-            <span>RELIEF SUPPLY CONVOYS & DISTRIBUTION AUDIT</span>
+      {/* Visual Convoy Banner */}
+      <div className="relative rounded-3xl overflow-hidden border border-slate-800 shadow-2xl h-52 sm:h-64">
+        <Image
+          src={ASSETS.ruralRoad}
+          alt="Rural Bangladesh Humanitarian Convoy Route"
+          fill
+          priority
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-transparent" />
+        <div className="absolute inset-0 p-6 sm:p-10 flex flex-col justify-end space-y-2">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-xs font-mono uppercase tracking-wider w-max">
+            <Truck className="w-3.5 h-3.5" />
+            <span>LAST-MILE HUMANITARIAN LOGISTICS // প্রান্তিক ত্রাণ বিতরণ</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight mt-1">
-            Relief Distribution Tracking
+          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+            Relief Distribution Tracking & Logistics
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Real-time telemetry on humanitarian supply convoys, route status, and recipient safe-zone confirmations.
+          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+            Real-time telemetry tracking humanitarian convoys traversing inundated rural corridors across Sylhet, Sunamganj, and the coastal belt.
           </p>
         </div>
+      </div>
 
-        {/* Global Delivered Metric */}
-        <div className="p-4 rounded-2xl glass-panel border border-slate-800 flex items-center space-x-4">
-          <div className="text-right">
-            <div className="text-[10px] font-mono text-slate-400 uppercase">Convoy Completion</div>
-            <div className="text-xl font-black text-emerald-400 font-mono">
+      {/* Global Delivered Metric Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-5 rounded-2xl glass-panel border border-slate-800 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-mono text-slate-400 uppercase">Total Completed</div>
+            <div className="text-2xl font-black text-emerald-400 font-mono mt-0.5">
               {totalDelivered} / {convoys.length} Delivered
             </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-mono font-bold text-xs">
-            {inTransitCount} En Route
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="p-5 rounded-2xl glass-panel border border-slate-800 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-mono text-slate-400 uppercase">En Route Convoy Fleets</div>
+            <div className="text-2xl font-black text-amber-400 font-mono mt-0.5">
+              {inTransitCount} In Transit
+            </div>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <Truck className="w-6 h-6 animate-pulse" />
+          </div>
+        </div>
+
+        <div className="p-5 rounded-2xl glass-panel border border-slate-800 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-mono text-slate-400 uppercase">Verification Rate</div>
+            <div className="text-2xl font-black text-cyan-400 font-mono mt-0.5">
+              100% Cryptographic
+            </div>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+            <ShieldCheck className="w-6 h-6" />
           </div>
         </div>
       </div>

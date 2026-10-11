@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import {
   ShieldAlert,
@@ -19,43 +20,172 @@ import {
   Camera,
   Layers,
   Truck,
+  Flame,
+  Building2,
+  Trees,
+  PhoneCall,
+  MapPin,
+  Sparkles,
+  Droplets,
+  AlertTriangle,
+  FileCheck,
 } from 'lucide-react';
-import StatCard from '@/components/StatCard';
-import { db } from '@/lib/db';
-import { SOSTrendChart } from '@/components/analytics/CrisisAnalyticsChart';
+import { ASSETS } from '@/lib/assets';
+import { SOSTrendChart, ShelterOccupancyChart } from '@/components/analytics/CrisisAnalyticsChart';
+
+const CRISIS_MODULES = [
+  {
+    id: 'flood',
+    title: 'Surma-Jamuna River Basin Flash Flood Inundation',
+    banglaTitle: 'সুরমা-যমুনা নদী অববাহিকা আকস্মিক বন্যা',
+    tag: 'ACTIVE SURGE',
+    tagColor: 'bg-red-950 text-red-300 border-red-700',
+    description: 'Real-time telemetry tracking river gages across Sylhet, Sunamganj, and Kurigram with autonomous evacuation warnings.',
+    image: ASSETS.flood,
+    href: '/map',
+    stat: '+1.15m Above Danger Level',
+  },
+  {
+    id: 'cyclone',
+    title: 'Coastal Reinforced Cyclone Shelters',
+    banglaTitle: 'উপকূলীয় বহুমুখী ঘূর্ণিঝড় আশ্রয়কেন্দ্র',
+    tag: '482 SHELTERS OPEN',
+    tagColor: 'bg-emerald-950 text-emerald-300 border-emerald-700',
+    description: 'High-ground shelter network across Cox&apos;s Bazar, Chittagong, and Barisal equipped with solar power and emergency food reserves.',
+    image: ASSETS.cycloneShelter,
+    href: '/shelters',
+    stat: '89,400 Citizens Sheltered',
+  },
+  {
+    id: 'rescue',
+    title: 'Bangladesh Fire Service & USAR Fleet',
+    banglaTitle: 'ফায়ার সার্ভিস ও সিভিল ডিফেন্স উদ্ধার দল',
+    tag: 'TACTICAL SAR',
+    tagColor: 'bg-orange-950 text-orange-300 border-orange-700',
+    description: 'Specialized zodiac speedboats, drone thermal scanners, and paramedic dive squads deployed for rooftop extractions.',
+    image: ASSETS.rescueOperation,
+    href: '/dashboard/rescue',
+    stat: '184 Speedboats Deployed',
+  },
+  {
+    id: 'environment',
+    title: 'Buriganga & River Ecological Protection',
+    banglaTitle: 'বুড়িগঙ্গা-কর্ণফুলী নদী দূষণ ও বর্জ্য প্রতিরোধ',
+    tag: 'ECO WATCH',
+    tagColor: 'bg-teal-950 text-teal-300 border-teal-700',
+    description: 'Continuous IoT optical water quality probes, canal chokepoint clearance, and industrial runoff monitoring.',
+    image: ASSETS.waterPollution,
+    href: '/environment',
+    stat: '42 Rivers Monitored',
+  },
+  {
+    id: 'medevac',
+    title: 'Emergency Medevac & Hospital Stabilization',
+    banglaTitle: 'জরুরি ট্রমা ও অ্যাম্বুলেন্স চিকিৎসা বহর',
+    tag: 'CRITICAL CARE',
+    tagColor: 'bg-blue-950 text-blue-300 border-blue-700',
+    description: 'Rapid GPS-dispatched emergency ambulances and trauma triage units routing critical casualties to district hospitals.',
+    image: ASSETS.ambulance,
+    href: '/dashboard/citizen',
+    stat: '98% Response Readiness',
+  },
+  {
+    id: 'logistics',
+    title: 'Rural Road Relief Convoys & Last-Mile Aid',
+    banglaTitle: 'গ্রামীণ দুর্গম এলাকা ত্রাণ সরবরাহ কনভয়',
+    tag: 'RELIEF MESH',
+    tagColor: 'bg-cyan-950 text-cyan-300 border-cyan-700',
+    description: 'Bangladesh Red Crescent and NGO convoy fleets transporting water purification bladders and rations to cut-off upazilas.',
+    image: ASSETS.ruralRoad,
+    href: '/distribution',
+    stat: '25.0 Tonnes Dispatched Today',
+  },
+];
+
+const ROLES_PREVIEWS = [
+  {
+    role: 'Citizen',
+    bangla: 'নাগরিক',
+    desc: '1-Touch SOS Beacon, Bengali voice disaster reporting, live shelter locator, and family safe check-in.',
+    href: '/dashboard/citizen',
+    color: 'border-emerald-500/40 from-emerald-950/40 to-slate-900/80 text-emerald-400',
+    icon: LifeBuoy,
+  },
+  {
+    role: 'Rescue Team',
+    bangla: 'উদ্ধারকারী দল',
+    desc: 'Tactical SAR missions, Fire Service equipment telemetry, triage pipeline, and live tactical radio net.',
+    href: '/dashboard/rescue',
+    color: 'border-orange-500/40 from-orange-950/40 to-slate-900/80 text-orange-400',
+    icon: Flame,
+  },
+  {
+    role: 'NGO Logistics',
+    bangla: 'এনজিও ও রেড ক্রিসেন্ট',
+    desc: 'Supply warehouse stock, water bladder allocation, relief convoy routing, and verified aid delivery.',
+    href: '/dashboard/ngo',
+    color: 'border-cyan-500/40 from-cyan-950/40 to-slate-900/80 text-cyan-400',
+    icon: Truck,
+  },
+  {
+    role: 'Government EOC',
+    bangla: 'সিভিল ডিফেন্স কমান্ড',
+    desc: 'National EOC bunker, BWDB hydrological sensor grid, BTRC emergency cell SMS siren broadcast.',
+    href: '/dashboard/government',
+    color: 'border-blue-500/40 from-blue-950/40 to-slate-900/80 text-blue-400',
+    icon: Building2,
+  },
+  {
+    role: 'Admin Commander',
+    bangla: 'প্রধান সমন্বয়ক',
+    desc: 'Full ICS-400 operational authority, multi-agency RBAC user governance, and crisis analytics.',
+    href: '/dashboard/admin',
+    color: 'border-amber-500/40 from-amber-950/40 to-slate-900/80 text-amber-400',
+    icon: Activity,
+  },
+];
 
 export default function HomePage() {
-  const stats = db.getStats();
-  const disasters = db.getDisasters();
-  const sosRequests = db.getSOSRequests().slice(0, 4);
-
   return (
-    <div className="flex flex-col space-y-16 pb-16">
-      {/* Hero Section with Framer Motion */}
-      <section className="relative overflow-hidden pt-12 pb-20 border-b border-slate-800/80 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-        <div className="absolute inset-0 bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:32px_32px] opacity-10 pointer-events-none" />
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="flex flex-col space-y-20 pb-20">
+      {/* Flagship Hero Section */}
+      <section className="relative overflow-hidden pt-12 pb-24 border-b border-slate-800/80 bg-gradient-to-b from-[#060b13] via-[#091322] to-[#060b13]">
+        {/* Background Bangladesh Map Artwork & River Gradient */}
+        <div className="absolute inset-0 opacity-15 pointer-events-none mix-blend-screen">
+          <Image
+            src={ASSETS.mapArtwork}
+            alt="Bangladesh Sovereign Tactical Map"
+            fill
+            className="object-cover object-center"
+            priority
+          />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#060b13]/80 via-transparent to-[#060b13]" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center space-y-6">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4 }}
-            className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-red-950/80 border border-red-500/40 text-red-300 text-xs font-mono uppercase tracking-wider shadow-lg shadow-red-950/50"
+            className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-slate-900/90 border border-emerald-500/40 text-emerald-300 text-xs font-mono uppercase tracking-widest shadow-xl shadow-emerald-950/40 backdrop-blur-md"
           >
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping-slow" />
-            <span>LEVEL 1 RESPONSE DEPLOYED: CASCADIA SECTOR 4</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-bangla text-white font-semibold">গণপ্রজাতন্ত্রী বাংলাদেশ</span>
+            <span>• NATIONAL DISASTER & RIVER INTELLIGENCE GRID</span>
           </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white max-w-4xl mx-auto leading-[1.1]"
+            className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white max-w-5xl mx-auto leading-[1.12]"
           >
-            Autonomous AI for <br />
-            <span className="bg-gradient-to-r from-red-500 via-rose-400 to-amber-400 bg-clip-text text-transparent">
-              Disaster Response & Relief
+            Autonomous Crisis Intelligence for{' '}
+            <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              Bangladesh
+            </span>
+            <span className="block text-2xl sm:text-4xl font-bangla text-slate-200 font-bold mt-2">
+              (বাংলাদেশ জাতীয় দুর্যোগ নিয়ন্ত্রণ ও পরিবেশ সুরক্ষা ব্যবস্থা)
             </span>
           </motion.h1>
 
@@ -63,323 +193,221 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-slate-400 text-base sm:text-xl max-w-2xl mx-auto font-normal leading-relaxed"
+            className="text-sm sm:text-lg text-slate-300 max-w-3xl mx-auto leading-relaxed"
           >
-            Empowering citizens, volunteers, NGOs, and incident commanders with Gemini multimodal damage vision, live radar tracking, and transparent relief logistics.
+            A sovereign, multi-agency disaster management platform powering rapid Search & Rescue extractions, multimodal satellite flood detection, coastal cyclone shelter coordination, and river pollution protection.
           </motion.p>
 
+          {/* Action CTAs */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-wrap items-center justify-center gap-4 pt-4"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
           >
             <Link
               href="/sos"
-              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-sm tracking-wide shadow-xl shadow-red-600/30 transition transform hover:-translate-y-0.5 active:translate-y-0 flex items-center space-x-2"
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-sm uppercase tracking-wider transition shadow-2xl shadow-red-950 flex items-center justify-center space-x-2.5 hover:scale-105 active:scale-95"
             >
-              <LifeBuoy className="w-5 h-5 animate-pulse" />
-              <span>Broadcast Emergency SOS</span>
+              <LifeBuoy className="w-5 h-5 animate-spin" />
+              <span>BROADCAST EMERGENCY SOS</span>
+              <span className="font-bangla font-semibold text-xs text-amber-200">(জরুরি সাহায্য)</span>
             </Link>
 
             <Link
               href="/map"
-              className="px-6 py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-cyan-500/50 text-cyan-300 font-bold text-sm tracking-wide shadow-lg transition transform hover:-translate-y-0.5 flex items-center space-x-2"
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-white font-bold text-sm tracking-wide transition shadow-xl flex items-center justify-center space-x-2.5 hover:border-cyan-500"
             >
               <Compass className="w-5 h-5 text-cyan-400" />
-              <span>Launch Live Tactical Map</span>
-            </Link>
-
-            <Link
-              href="/shelters"
-              className="px-6 py-3.5 rounded-2xl glass-panel hover:bg-slate-800/80 text-slate-200 font-bold text-sm tracking-wide transition flex items-center space-x-2"
-            >
-              <Home className="w-5 h-5 text-emerald-400" />
-              <span>Shelter Finder</span>
+              <span>Explore Bangladesh Tactical Map</span>
+              <ArrowRight className="w-4 h-4 text-slate-400" />
             </Link>
           </motion.div>
-        </div>
-      </section>
 
-      {/* Real-Time Metrics Row */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full -mt-10 relative z-20">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <StatCard
-            title="Active Disasters"
-            value={stats.activeDisastersCount}
-            subtitle="Floods, Seismology & Fire"
-            icon={ShieldAlert}
-            variant="danger"
-            trend="+1 New Zone"
-          />
-          <StatCard
-            title="Population at Risk"
-            value={`${(stats.totalAffected / 1000).toFixed(1)}k`}
-            subtitle="Under Evacuation Orders"
-            icon={Users}
-            variant="warning"
-          />
-          <StatCard
-            title="Critical SOS Queue"
-            value={stats.criticalSOSCount}
-            subtitle="Awaiting Rapid Extraction"
-            icon={Zap}
-            variant="danger"
-            trend="Avg ETA: 9m"
-          />
-          <StatCard
-            title="Safe Sheltered"
-            value={stats.totalSheltered.toLocaleString()}
-            subtitle="Housed Across Safe Zones"
-            icon={Home}
-            variant="success"
-            trend="76% Capacity"
-          />
-          <StatCard
-            title="Verified Aid"
-            value={`$${(stats.totalAidRaised / 1000).toFixed(0)}k`}
-            subtitle="Public Ledger Verified"
-            icon={HeartHandshake}
-            variant="info"
-            trend="100% Allocated"
-          />
-        </div>
-      </section>
-
-      {/* Live Operational Feed & Recharts Analytics */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Active Disasters Overview */}
-          <div className="lg:col-span-2 glass-panel p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <div className="flex items-center space-x-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                <h2 className="text-lg font-bold text-white tracking-wide">Live Disaster Hazard Zones</h2>
+          {/* Real-time National Sovereign Ticker */}
+          <div className="pt-8 max-w-5xl mx-auto">
+            <div className="glass-panel p-4 rounded-2xl border border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-mono text-slate-400 uppercase">Surma & Jamuna Rivers</span>
+                <div className="text-sm font-bold text-red-400 font-mono">+1.15m Flood Surge</div>
+                <span className="text-[10px] text-slate-500">Sylhet Basin Warning</span>
               </div>
-              <Link href="/map" className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 flex items-center space-x-1">
-                <span>View Tactical Radar</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-mono text-slate-400 uppercase">Bay of Bengal Cyclone</span>
+                <div className="text-sm font-bold text-amber-400 font-mono">Deep Depression 03</div>
+                <span className="text-[10px] text-slate-500">Signal No. 4 Alert</span>
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-mono text-slate-400 uppercase">Active SAR Speedboats</span>
+                <div className="text-sm font-bold text-emerald-400 font-mono">184 Fleet Units</div>
+                <span className="text-[10px] text-slate-500">Fire Service & Navy</span>
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-mono text-slate-400 uppercase">Safe Shelters Ready</span>
+                <div className="text-sm font-bold text-cyan-400 font-mono">482 Centers Open</div>
+                <span className="text-[10px] text-slate-500">89,400 Housed</span>
+              </div>
             </div>
+          </div>
+        </div>
+      </section>
 
-            <div className="space-y-3">
-              {disasters.map((disaster) => (
-                <div
-                  key={disaster.id}
-                  className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                          disaster.severity === 'critical'
-                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                            : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        }`}
-                      >
-                        {disaster.severity}
-                      </span>
-                      <h3 className="font-bold text-white text-sm">{disaster.title}</h3>
-                    </div>
-                    <p className="text-xs text-slate-400 max-w-xl">{disaster.description}</p>
-                    <div className="flex items-center space-x-4 text-[11px] font-mono text-slate-400 pt-1">
-                      <span>Perimeter: {disaster.location.radiusKm} km</span>
-                      <span>•</span>
-                      <span>Responders: {disaster.respondersDeployed} personnel</span>
-                    </div>
-                  </div>
+      {/* Strategic Bangladesh Crisis Modules Grid */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800 pb-5">
+          <div>
+            <div className="flex items-center space-x-2 text-xs font-mono text-emerald-400 font-bold uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span>DISASTER MODULES • জাতীয় দুর্যোগ ও উদ্ধার মডিউল</span>
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight mt-1">
+              Field-Tested Crisis Operations for Bangladesh
+            </h2>
+          </div>
+          <Link
+            href="/map"
+            className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center space-x-1"
+          >
+            <span>View All Operational Zones on Live Map</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {CRISIS_MODULES.map((mod) => (
+            <div
+              key={mod.id}
+              className="glass-panel rounded-3xl border border-slate-800 hover:border-cyan-500/50 transition duration-300 overflow-hidden shadow-2xl flex flex-col justify-between group"
+            >
+              <div className="relative h-48 w-full overflow-hidden">
+                <Image
+                  src={mod.image}
+                  alt={mod.title}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
+                <div className="absolute top-3 left-3">
+                  <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${mod.tagColor}`}>
+                    {mod.tag}
+                  </span>
+                </div>
+                <div className="absolute bottom-3 left-3 right-3">
+                  <span className="text-[11px] font-bangla text-emerald-300 font-semibold block">
+                    {mod.banglaTitle}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition">
+                    {mod.title}
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {mod.description}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                  <span className="font-mono text-cyan-400 font-bold">{mod.stat}</span>
                   <Link
-                    href="/map"
-                    className="shrink-0 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 text-center transition"
+                    href={mod.href}
+                    className="inline-flex items-center space-x-1 text-slate-300 group-hover:text-white font-semibold transition"
                   >
-                    Track Perimeter
+                    <span>Inspect</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Real-Time Live Triage Stream */}
-          <div className="glass-panel p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <div className="flex items-center space-x-2">
-                <Radio className="w-4 h-4 text-red-400 animate-pulse" />
-                <h2 className="text-lg font-bold text-white">Live Triage Queue</h2>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-950 text-red-300 border border-red-800 font-bold">
-                GEMINI VISION
-              </span>
             </div>
-
-            <div className="space-y-3">
-              {sosRequests.map((req) => (
-                <div
-                  key={req.id}
-                  className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2 hover:border-slate-700 transition"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-xs text-slate-200">{req.reporterName}</span>
-                    <span
-                      className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                        req.priority === 'CRITICAL'
-                          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                          : 'bg-amber-500/20 text-amber-400'
-                      }`}
-                    >
-                      {req.urgencyScore}/100 [{req.priority}]
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 line-clamp-2">{req.details}</p>
-                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 pt-1 border-t border-slate-800/60">
-                    <span className="truncate max-w-[160px]">{req.location.address}</span>
-                    <span className="text-cyan-400 uppercase font-bold">{req.status}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <Link
-              href="/sos"
-              className="w-full mt-2 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-semibold text-xs text-center block transition"
-            >
-              Report Emergency Incident →
-            </Link>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* Role Workspaces Navigation Matrix */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-6">
-        <div className="text-center space-y-2">
-          <span className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-widest">Multi-Stakeholder Portals</span>
-          <h2 className="text-2xl sm:text-3xl font-black text-white">Unified Personas</h2>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto">
-            Access role-tailored dashboards for citizens, volunteers, NGOs, and emergency incident commanders.
+      {/* 5 Distinct RBAC Role Portals Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <div className="text-center space-y-2 max-w-2xl mx-auto">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-700 text-xs font-mono text-cyan-400 uppercase">
+            <Users className="w-3.5 h-3.5" />
+            <span>ROLE-BASED COMMAND ARCHITECTURE</span>
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-black text-white">
+            Tailored Dashboards for Every Agency
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-400">
+            Dedicated operational interfaces tailored with role-specific widgets, permissions, and security protocols.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Citizen */}
-          <div className="glass-panel p-6 rounded-3xl border border-slate-800 hover:border-red-500/40 transition group flex flex-col justify-between space-y-4 shadow-xl">
-            <div className="space-y-3">
-              <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-110 transition">
-                <LifeBuoy className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-white text-base">Citizen / Victim</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                One-tap SOS dispatch, upload disaster photos for Gemini damage detection, and find safe evacuation shelters with food and water.
-              </p>
-            </div>
-            <Link
-              href="/sos"
-              className="w-full py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white font-bold text-xs text-center transition"
-            >
-              Submit SOS Report →
-            </Link>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {ROLES_PREVIEWS.map((r) => {
+            const Icon = r.icon;
+            return (
+              <Link
+                key={r.role}
+                href={r.href}
+                className={`glass-panel p-5 rounded-3xl border bg-gradient-to-b ${r.color} hover:-translate-y-1 transition duration-200 space-y-3 flex flex-col justify-between shadow-xl`}
+              >
+                <div className="space-y-2">
+                  <div className="w-10 h-10 rounded-2xl bg-slate-950/90 border border-slate-700 flex items-center justify-center">
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">{r.role}</h3>
+                    <span className="text-[11px] font-bangla text-slate-300 font-semibold block">{r.bangla}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-snug">{r.desc}</p>
+                </div>
 
-          {/* Volunteer */}
-          <div className="glass-panel p-6 rounded-3xl border border-slate-800 hover:border-emerald-500/40 transition group flex flex-col justify-between space-y-4 shadow-xl">
-            <div className="space-y-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition">
-                <Users className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-white text-base">Volunteer Worker</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Claim field missions, verify on-scene GPS location, assist sandbagging berms, and provide crisis translation and CPR aid.
-              </p>
-            </div>
-            <Link
-              href="/dashboard/volunteer"
-              className="w-full py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 font-bold text-xs text-center transition"
-            >
-              Volunteer Dashboard →
-            </Link>
-          </div>
-
-          {/* NGO */}
-          <div className="glass-panel p-6 rounded-3xl border border-slate-800 hover:border-cyan-500/40 transition group flex flex-col justify-between space-y-4 shadow-xl">
-            <div className="space-y-3">
-              <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition">
-                <Truck className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-white text-base">NGO & Logistics Lead</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Dispatch humanitarian relief convoys, manage depot inventories, and verify delivery signatures directly from shelters.
-              </p>
-            </div>
-            <Link
-              href="/dashboard/ngo"
-              className="w-full py-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500 text-cyan-400 hover:text-slate-950 font-bold text-xs text-center transition"
-            >
-              NGO Operations Hub →
-            </Link>
-          </div>
-
-          {/* Admin / Commander */}
-          <div className="glass-panel p-6 rounded-3xl border border-slate-800 hover:border-amber-500/40 transition group flex flex-col justify-between space-y-4 shadow-xl">
-            <div className="space-y-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition">
-                <Activity className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-white text-base">Admin / Commander</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Recharts analytics on rescue rates and shelter capacities, ICS-400 audit logs, and autonomous dispatch authorizations.
-              </p>
-            </div>
-            <Link
-              href="/dashboard/admin"
-              className="w-full py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 font-bold text-xs text-center transition"
-            >
-              Admin Command →
-            </Link>
-          </div>
+                <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-semibold">
+                  <span>Enter Portal</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
-      {/* AI Intelligence Architecture Spotlight */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="p-8 sm:p-12 rounded-3xl glass-panel-elevated border border-slate-800 relative overflow-hidden">
-          <div className="max-w-2xl space-y-4">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 text-xs font-mono">
-              <Bot className="w-3.5 h-3.5" />
-              <span>POWERED BY GEMINI MULTIMODAL API</span>
-            </div>
-            <h2 className="text-2xl sm:text-4xl font-black text-white">
-              Instant AI Vision & Automated Triage
-            </h2>
-            <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-              When disaster strikes, photo evidence uploaded by victims is processed by Gemini AI in sub-second latency to detect structural collapse, floodwater depth, trapped survivors, and allocate specialized rescue squads without delay.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
-              <div className="flex items-center space-x-2 text-xs text-slate-300 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Multimodal photo damage classification</span>
+      {/* AI Damage Triage & National Analytics Preview */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="glass-panel p-6 sm:p-10 rounded-3xl border border-slate-800 space-y-8 shadow-2xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+            <div>
+              <div className="flex items-center space-x-2 text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">
+                <Bot className="w-4 h-4 text-cyan-400" />
+                <span>MULTIMODAL AI SATELLITE & DAMAGE TRIAGE ENGINE</span>
               </div>
-              <div className="flex items-center space-x-2 text-xs text-slate-300 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Automated severity scoring (0-100)</span>
-              </div>
-              <div className="flex items-center space-x-2 text-xs text-slate-300 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Situational SITREP generation</span>
-              </div>
-              <div className="flex items-center space-x-2 text-xs text-slate-300 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Resilient offline mesh fallback</span>
-              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                Real-Time Crisis Telemetry & Resource Extraction
+              </h2>
             </div>
 
-            <div className="pt-4 flex items-center space-x-3">
-              <Link
-                href="/sos"
-                className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs tracking-wider uppercase transition shadow-lg shadow-cyan-950"
-              >
-                <Camera className="w-4 h-4" />
-                <span>Test AI Damage Scanning</span>
-              </Link>
+            <Link
+              href="/ai-copilot"
+              className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-cyan-950"
+            >
+              <Bot className="w-4 h-4" />
+              <span>Launch AI Copilot (বাংলা চ্যাট)</span>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-white">Incoming SOS Rate vs. Rescue Extractions</h4>
+                <span className="text-[10px] font-mono text-cyan-400">SURMA BASIN HOURLY</span>
+              </div>
+              <SOSTrendChart />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-white">Coastal Shelter Occupancy vs. Capacity</h4>
+                <span className="text-[10px] font-mono text-emerald-400">482 SHELTERS ONLINE</span>
+              </div>
+              <ShelterOccupancyChart />
             </div>
           </div>
         </div>

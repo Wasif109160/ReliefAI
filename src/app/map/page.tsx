@@ -10,6 +10,7 @@ import {
   CloudRain,
   RefreshCw,
   CheckCircle2,
+  Waves,
 } from 'lucide-react';
 import { DisasterIncident, SOSRequest, Shelter, ResponderTeam } from '@/lib/types';
 import { useNotifications } from '@/context/NotificationContext';
@@ -20,20 +21,20 @@ export default function MapPage() {
   const [sosRequests, setSosRequests] = useState<SOSRequest[]>([]);
   const [shelters, setShelters] = useState<Shelter[]>([]);
   const [responders, setResponders] = useState<ResponderTeam[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [resDisasters, resSOS, resShelters, resResponders] = await Promise.all([
-        fetch('/api/disasters').then((r) => r.json()),
-        fetch('/api/sos').then((r) => r.json()),
-        fetch('/api/shelters').then((r) => r.json()),
-        fetch('/api/responders').then((r) => r.json()),
+        fetch('/api/disasters').then((r) => r.json()).catch(() => ({})),
+        fetch('/api/sos').then((r) => r.json()).catch(() => []),
+        fetch('/api/shelters').then((r) => r.json()).catch(() => []),
+        fetch('/api/responders').then((r) => r.json()).catch(() => []),
       ]);
 
-      if (resDisasters.disasters) setDisasters(resDisasters.disasters);
+      if (resDisasters?.disasters) setDisasters(resDisasters.disasters);
       if (Array.isArray(resSOS)) setSosRequests(resSOS);
       if (Array.isArray(resShelters)) setShelters(resShelters);
       if (Array.isArray(resResponders)) setResponders(resResponders);
@@ -55,15 +56,15 @@ export default function MapPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           teamId: 'team-02',
-          teamName: 'Cascadia Swift Water Rescue Unit B',
+          teamName: 'Bangladesh Fire Service Task Force 01',
         }),
       });
       if (res.ok) {
-        setToastMsg(`Rescue unit dispatched to SOS #${sosId}! Team en route.`);
+        setToastMsg(`Fire Service rescue speedboat dispatched to SOS #${sosId}!`);
         addNotification({
           targetRole: 'all',
-          title: `RESCUE TASK FORCE EN ROUTE: SOS #${sosId}`,
-          message: 'Cascadia Swift Water Rescue Unit B dispatched. ETA 7 mins.',
+          title: `FIRE SERVICE SPEEDBOAT DISPATCHED: SOS #${sosId}`,
+          message: 'Sylhet Division USAR Zodiac Unit 2 en route. ETA 8 mins.',
           type: 'urgent',
           link: '/map',
         });
@@ -90,10 +91,13 @@ export default function MapPage() {
         <div>
           <div className="flex items-center space-x-2 text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">
             <Compass className="w-4 h-4 animate-spin-slow" />
-            <span>GOOGLE MAPS & TACTICAL RADAR // LIVE TELEMETRY</span>
+            <span>SOVEREIGN BANGLADESH GEOSPATIAL INTELLIGENCE // BWDB TELEMETRY</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight mt-1">
-            Live Geospatial Map
+            Bangladesh Tactical Crisis Map
+            <span className="block text-emerald-400 font-bangla text-lg sm:text-xl font-bold mt-0.5">
+              বাংলাদেশ জাতীয় দুর্যোগ মানচিত্র ও উদ্ধার পর্যবেক্ষণ
+            </span>
           </h1>
         </div>
 
@@ -103,7 +107,7 @@ export default function MapPage() {
           className="self-start sm:self-auto flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 transition"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh Radar Streams</span>
+          <span>Refresh Telemetry Stream</span>
         </button>
       </div>
 
@@ -114,8 +118,10 @@ export default function MapPage() {
             <Droplets className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[10px] text-slate-400 uppercase font-mono">River Crest Gauge</div>
-            <div className="text-sm font-bold text-white">19.4 ft <span className="text-[10px] text-red-400 font-mono">(CRITICAL)</span></div>
+            <div className="text-[10px] text-slate-400 uppercase font-mono">Surma River Gage</div>
+            <div className="text-sm font-bold text-white font-mono">
+              14.22 m <span className="text-[10px] text-red-400 font-mono">(CRITICAL +1.15m)</span>
+            </div>
           </div>
         </div>
 
@@ -124,8 +130,10 @@ export default function MapPage() {
             <Wind className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[10px] text-slate-400 uppercase font-mono">Surface Wind</div>
-            <div className="text-sm font-bold text-white">38 kts NW <span className="text-[10px] text-amber-400 font-mono">(Gale)</span></div>
+            <div className="text-[10px] text-slate-400 uppercase font-mono">Bay of Bengal Wind</div>
+            <div className="text-sm font-bold text-white font-mono">
+              82 km/h <span className="text-[10px] text-amber-400 font-mono">(Signal 4)</span>
+            </div>
           </div>
         </div>
 
@@ -134,8 +142,8 @@ export default function MapPage() {
             <CloudRain className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[10px] text-slate-400 uppercase font-mono">Rain Accumulation</div>
-            <div className="text-sm font-bold text-white">4.8 in / 6h</div>
+            <div className="text-[10px] text-slate-400 uppercase font-mono">Meghalaya Runoff Rain</div>
+            <div className="text-sm font-bold text-white font-mono">148 mm / 24h</div>
           </div>
         </div>
 
@@ -145,12 +153,12 @@ export default function MapPage() {
           </div>
           <div>
             <div className="text-[10px] text-slate-400 uppercase font-mono">Mesh Latency</div>
-            <div className="text-sm font-bold text-emerald-400 font-mono">14 ms (99.98%)</div>
+            <div className="text-sm font-bold text-emerald-400 font-mono">12 ms (99.99%)</div>
           </div>
         </div>
       </div>
 
-      {/* Google Live Map Component */}
+      {/* Google Live Map / TacticalMap Component */}
       <GoogleLiveMap
         disasters={disasters}
         sosRequests={sosRequests}

@@ -24,6 +24,7 @@ import {
   LogOut,
   Sparkles,
   Bot,
+  Trees,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/lib/types';
@@ -66,6 +67,7 @@ export default function Navbar() {
   // Nav links: Dynamically shows the user's authorized role dashboard and common public pages
   const navLinks: NavLinkItem[] = [
     { href: '/map', label: 'Live Map', icon: MapPin },
+    { href: '/environment', label: 'Environment', icon: Trees, badge: 'Eco' },
     { href: '/shelters', label: 'Shelter Finder', icon: Home },
     { href: '/ai-copilot', label: 'AI Copilot', icon: Bot, badge: 'Gemini' },
     ...(isAuthenticated ? [currentDashboard] : []),

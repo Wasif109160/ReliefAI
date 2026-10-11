@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Hind_Siliguri } from 'next/font/google';
 import './globals.css';
 import EmergencyBanner from '@/components/EmergencyBanner';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import FloatingSOS from '@/components/FloatingSOS';
 import { AuthProvider } from '@/context/AuthContext';
 import { NotificationProvider } from '@/context/NotificationContext';
 
@@ -17,9 +18,15 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+const hindSiliguri = Hind_Siliguri({
+  variable: '--font-bangla',
+  subsets: ['bengali'],
+  weight: ['400', '500', '600', '700'],
+});
+
 export const metadata: Metadata = {
-  title: 'ReliefAI - Autonomous Disaster Response & Crisis Platform',
-  description: 'AI-powered humanitarian disaster management with Gemini multimodal damage detection, live SOS triage, shelter tracking, and volunteer logistics.',
+  title: 'ReliefAI Bangladesh (রিলিফএআই) - Autonomous Disaster Response & Environmental Protection Platform',
+  description: 'AI-driven crisis intelligence for Bangladesh: Multimodal satellite flood detection, cyclone early warnings, Fire Service SAR dispatch, and river pollution telemetry.',
 };
 
 export default function RootLayout({
@@ -28,13 +35,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full dark antialiased`}>
-      <body className="min-h-full flex flex-col bg-slate-950 text-slate-100 selection:bg-red-500 selection:text-white">
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} ${hindSiliguri.variable} h-full dark antialiased`}
+    >
+      <body className="min-h-full flex flex-col bg-[#060b13] text-slate-100 selection:bg-red-500 selection:text-white">
         <AuthProvider>
           <NotificationProvider>
             <EmergencyBanner />
             <Navbar />
             <main className="flex-1 w-full">{children}</main>
+            <FloatingSOS />
             <Footer />
           </NotificationProvider>
         </AuthProvider>

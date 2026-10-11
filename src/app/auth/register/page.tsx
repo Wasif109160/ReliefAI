@@ -21,8 +21,10 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from 'lucide-react';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/lib/types';
+import { ASSETS } from '@/lib/assets';
 
 const ROLES: { id: UserRole; title: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'citizen', title: 'Citizen', desc: 'Disaster SOS & safe shelters', icon: LifeBuoy },
@@ -106,15 +108,29 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 space-y-8">
+    <div className="relative max-w-3xl mx-auto px-4 sm:px-6 py-12 space-y-8">
+      {/* Background Bangladesh Map Atmosphere */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none mix-blend-screen overflow-hidden">
+        <Image
+          src={ASSETS.mapArtwork}
+          alt="Bangladesh Sovereign Tactical Map"
+          fill
+          className="object-contain object-top"
+          priority
+        />
+      </div>
+
       {/* Header */}
-      <div className="text-center space-y-2">
+      <div className="relative z-10 text-center space-y-2">
         <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-700 text-xs font-mono text-cyan-400 uppercase">
           <ShieldAlert className="w-3.5 h-3.5 text-cyan-400" />
-          <span>PERSONNEL REGISTRATION</span>
+          <span>গণপ্রজাতন্ত্রী বাংলাদেশ • PERSONNEL REGISTRATION</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-black text-white">Join the ReliefAI Crisis Network</h1>
-        <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
+        <span className="block text-emerald-400 font-bangla text-xl sm:text-2xl font-bold">
+          জাতীয় দুর্যোগ প্রতিক্রিয়া ও উদ্ধার নেটওয়ার্কে যোগদান
+        </span>
+        <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto">
           Create your verified identity with role-based permissions and secure credential encryption.
         </p>
       </div>

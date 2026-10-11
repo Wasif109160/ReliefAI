@@ -21,7 +21,7 @@ export default function AICopilotPage() {
       id: 'msg-init',
       sender: 'assistant',
       content:
-        'ReliefAI Incident Copilot online. I am synced with real-time sensor streams, active SOS triage queues, and regional shelter capacities. How can I assist your operation?',
+        'ReliefAI Incident Copilot অনলাইন। আমি বাংলাদেশ পানি উন্নয়ন বোর্ড (BWDB), দুর্যোগ ব্যবস্থাপনা অধিদপ্তর (DDM), এবং ফায়ার সার্ভিস ও সিভিল ডিফেন্স (FSCD) রিয়েলটাইম ডেটাস্ট্রিমের সাথে সমন্বিত। কীভাবে সহায়তা করতে পারি?',
       timestamp: '12:00 PM',
       mode: 'command',
     },
@@ -30,17 +30,19 @@ export default function AICopilotPage() {
   const [soundEnabled, setSoundEnabled] = useState(false);
 
   const commandPrompts = [
-    'Generate comprehensive Incident Action Plan (IAP)',
-    'Summarize current live Situation Report (SITREP)',
-    'Analyze critical resource deficits and supply reorder thresholds',
-    'Assess swift-water rescue feasibility in Sector 4',
+    'সুরমা-কুশিয়ারা অববাহিকার লাইভ পরিস্থিতি ও পূর্বাভাস (Surma Basin SITREP)',
+    'Generate comprehensive Incident Action Plan (IAP) for Sylhet flash floods',
+    'ঘূর্ণিঝড় ১০ নম্বর মহাবিপদ সংকেতে উপকূলীয় ইভাকুয়েশন প্রটোকল',
+    'FSCD ও রেড ক্রিসেন্ট (BDRCS) উদ্ধারকারী দল মোতায়েন বিশ্লেষণ',
+    'Analyze bKash & Nagad emergency relief grant disbursal thresholds',
   ];
 
   const citizenPrompts = [
-    'How do I stop severe arterial bleeding from a leg wound?',
-    'How do I safely purify flood water for drinking?',
-    'What should I do during and after an earthquake?',
-    'Where is the nearest safe shelter that accepts pets?',
+    'বন্যার পানি ফিটকিরি বা অ্যাকুয়াট্যাব দিয়ে কীভাবে বিশুদ্ধ করব?',
+    'কাছের নিরাপদ ঘূর্ণিঝড় আশ্রয়কেন্দ্র কোথায় পাব?',
+    'বন্যা বা প্লাবনে বিষধর সাপ কাটলে তাৎক্ষণিক প্রাথমিক চিকিৎসা কী?',
+    'How do I request emergency shallow-draft boat rescue via SOS?',
+    'ডায়রিয়া ও পানিবাহিত রোগ প্রতিরোধে ওআরএস প্রস্তুতি নিয়ম',
   ];
 
   const handleSend = async (textToSend?: string) => {
@@ -91,8 +93,8 @@ export default function AICopilotPage() {
         sender: 'assistant',
         content:
           newMode === 'command'
-            ? 'Switched to **Incident Command Operations Mode**. Ready to generate IAPs, SITREPs, and resource allocations.'
-            : 'Switched to **Citizen Life-Safety Mode**. Ready to guide you through emergency first aid, safe water disinfection, and evacuation shelter directions.',
+            ? 'সুইচ করা হয়েছে **জাতীয় ক্রাইসিস কমান্ড মোডে (Incident Command)**। IAP পরিকল্পনা, BWDB নদীর পানি বিপদসীমা ও উদ্ধারকর্মী মোতায়েনে প্রস্তুত।'
+            : 'সুইচ করা হয়েছে **নাগরিক জীবনরক্ষা মোডে (Citizen Life-Safety)**। জরুরি প্রাথমিক চিকিৎসা, সাপ কাটার অ্যান্টিভেনম নির্দেশিকা, বিশুদ্ধ পানি এবং আশ্রয়কেন্দ্র নির্দেশনায় প্রস্তুত।',
         timestamp: new Date().toLocaleTimeString(),
         mode: newMode,
       },

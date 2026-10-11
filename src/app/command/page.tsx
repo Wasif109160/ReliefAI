@@ -28,7 +28,7 @@ export default function CommandPage() {
   const [broadcastText, setBroadcastText] = useState('');
   const [broadcastSuccess, setBroadcastSuccess] = useState(false);
   const [selectedSOSId, setSelectedSOSId] = useState<string | null>(null);
-  const [selectedTeamId, setSelectedTeamId] = useState<string>('team-02');
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('team-01');
 
   const loadData = async () => {
     try {
@@ -59,7 +59,7 @@ export default function CommandPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: 'Generate comprehensive Incident Action Plan for current operational period',
+          prompt: 'Generate comprehensive Incident Action Plan for current operational period in Bangladesh flood and cyclone crisis',
           mode: 'command',
         }),
       });
@@ -79,8 +79,8 @@ export default function CommandPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          teamId: team?.id || 'team-02',
-          teamName: team?.name || 'Cascadia Swift Water Rescue Unit B',
+          teamId: team?.id || 'team-01',
+          teamName: team?.name || 'FSCD Sylhet Swift-Water Dive Team 1 (ফায়ার সার্ভিস)',
         }),
       });
       setSelectedSOSId(null);
@@ -107,7 +107,7 @@ export default function CommandPage() {
         <div>
           <div className="inline-flex items-center space-x-2 text-xs font-mono text-amber-400 font-bold uppercase tracking-wider">
             <Activity className="w-4 h-4 animate-pulse" />
-            <span>INCIDENT COMMAND POST // FEMA ICS-400 PROTOCOL</span>
+            <span>NATIONAL DISASTER INCIDENT COMMAND // দুর্যোগ ব্যবস্থাপনা ও ত্রাণ মন্ত্রণালয়</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight mt-1">
             Command Operations Center

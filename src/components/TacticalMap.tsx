@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import {
   AlertTriangle,
   Home,
@@ -12,506 +14,415 @@ import {
   Flame,
   Waves,
   Zap,
+  Droplets,
+  Trees,
+  Truck,
+  Building2,
+  CheckCircle2,
+  X,
+  Navigation,
+  Wind,
+  HeartHandshake,
+  LifeBuoy,
 } from 'lucide-react';
-import { DisasterIncident, SOSRequest, Shelter, ResponderTeam } from '@/lib/types';
+import { ASSETS } from '@/lib/assets';
 
-interface TacticalMapProps {
-  disasters: DisasterIncident[];
-  sosRequests: SOSRequest[];
-  shelters: Shelter[];
-  responders: ResponderTeam[];
-  onDispatchSOS?: (sosId: string) => void;
+export interface BangladeshMarker {
+  id: string;
+  title: string;
+  banglaTitle: string;
+  type: 'flood' | 'cyclone' | 'fire' | 'shelter' | 'hospital' | 'rescue' | 'environment';
+  district: string;
+  lat: number;
+  lng: number;
+  severity?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'SAFE';
+  status: string;
+  details: string;
+  image: string;
+  metric?: string;
+  contact?: string;
 }
 
-export default function TacticalMap({
-  disasters,
-  sosRequests,
-  shelters,
-  responders,
-  onDispatchSOS,
-}: TacticalMapProps) {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'sos' | 'shelters' | 'responders'>('all');
-  const [selectedItem, setSelectedItem] = useState<{
-    type: 'disaster' | 'sos' | 'shelter' | 'responder';
-    data: any;
-  } | null>(null);
+const BANGLADESH_MARKERS: BangladeshMarker[] = [
+  {
+    id: 'M-SYL-01',
+    title: 'Surma-Kushiyara Basin Flash Flood Inundation',
+    banglaTitle: 'সুরমা-কুশিয়ারা আকস্মিক বন্যা প্লাবন',
+    type: 'flood',
+    district: 'Sylhet (সিলেট)',
+    lat: 24.8949,
+    lng: 91.8687,
+    severity: 'CRITICAL',
+    status: '+1.15m Above Danger Level',
+    details: 'Torrential mountain runoff from Meghalaya hills has submerged Gowainghat and Companiganj. Rooftop rescues active.',
+    image: ASSETS.flood,
+    metric: 'Surma Gage: 14.22m',
+    contact: 'Fire Service Control: 102',
+  },
+  {
+    id: 'M-SUN-02',
+    title: 'Sunamganj Haor Basin Water Inundation',
+    banglaTitle: 'সুনামগঞ্জ হাওর এলাকা জলমগ্নতা',
+    type: 'flood',
+    district: 'Sunamganj (সুনামগঞ্জ)',
+    lat: 25.0715,
+    lng: 91.3992,
+    severity: 'CRITICAL',
+    status: 'Severed Road Access',
+    details: 'Tahrapur and Shalla upazilas disconnected by road. BDRCS motorized speedboats ferrying emergency rice and oral saline.',
+    image: ASSETS.flood,
+    metric: 'Haor Water Depth: 3.4m',
+    contact: 'District EOC: 01712-000000',
+  },
+  {
+    id: 'M-COX-03',
+    title: 'Bay of Bengal Cyclone Storm Surge Warning',
+    banglaTitle: 'বঙ্গোপসাগর ঘূর্ণিঝড় পূর্বাভাস সংকেত ৪',
+    type: 'cyclone',
+    district: 'Cox&apos;s Bazar (কক্সবাজার)',
+    lat: 21.4272,
+    lng: 91.9702,
+    severity: 'HIGH',
+    status: 'Signal No. 4 Alert',
+    details: 'Deep depression tracking northward. Coastal fishing trawlers advised to stay anchored in St. Martin&apos;s channel.',
+    image: ASSETS.cycloneShelter,
+    metric: 'Gust: 82 km/h • Wave: 2.8m',
+    contact: 'Cyclone Early Warning: 1090',
+  },
+  {
+    id: 'M-DHK-04',
+    title: 'Dhaka Metropolitan Fire Service & USAR HQ',
+    banglaTitle: 'ফায়ার সার্ভিস কেন্দ্রীয় কমান্ড ও আরবান রেসকিউ',
+    type: 'fire',
+    district: 'Dhaka (ঢাকা)',
+    lat: 23.8103,
+    lng: 90.4125,
+    severity: 'MEDIUM',
+    status: 'Standby Rescue Readiness',
+    details: 'Heavy hydraulic equipment and drone mapping units ready for urban structural collapse and industrial fire mitigation.',
+    image: ASSETS.fireService,
+    metric: '12 Heavy Squads Active',
+    contact: 'FSCD Central: 999',
+  },
+  {
+    id: 'M-SHL-05',
+    title: 'Teknaf Coastal Multi-Purpose Cyclone Shelter',
+    banglaTitle: 'টেকনাফ উপকূলীয় বহুমুখী ঘূর্ণিঝড় আশ্রয়কেন্দ্র',
+    type: 'shelter',
+    district: 'Teknaf (টেকনাফ)',
+    lat: 20.8654,
+    lng: 92.2983,
+    severity: 'SAFE',
+    status: 'OPEN (720 / 1,000 Capacity)',
+    details: 'Reinforced 3-story concrete shelter with rooftop solar power, rainwater harvesting bladders, and gender-segregated safe dorms.',
+    image: ASSETS.cycloneShelter,
+    metric: 'Occupancy: 72%',
+    contact: 'Shelter Warden: 01819-000000',
+  },
+  {
+    id: 'M-HOS-06',
+    title: 'Sylhet MAG Osmani Medical Trauma Center',
+    banglaTitle: 'সিলেট এমএজি ওসমানী মেডিকেল কলেজ ও ট্রমা সেন্টার',
+    type: 'hospital',
+    district: 'Sylhet (সিলেট)',
+    lat: 24.8998,
+    lng: 91.8542,
+    severity: 'HIGH',
+    status: 'Critical Care Operational',
+    details: 'Flood medevac casualties being admitted. Central oxygen bank online with backup diesel turbine generator.',
+    image: ASSETS.hospital,
+    metric: 'Bed Availability: 42 Beds',
+    contact: 'Hospital Intake: 01713-000000',
+  },
+  {
+    id: 'M-RSC-07',
+    title: 'Bangladesh Navy & Coast Guard SAR Flotilla',
+    banglaTitle: 'নৌবাহিনী ও কোস্ট গার্ড উদ্ধার বোট ফ্লোটিলা',
+    type: 'rescue',
+    district: 'Chittagong Port Channel (চট্টগ্রাম)',
+    lat: 22.3384,
+    lng: 91.8317,
+    severity: 'HIGH',
+    status: 'Patrolling Coastal Estuary',
+    details: 'High-speed coastal interceptors and inflatable dive boats deployed for marine rescue and emergency escort.',
+    image: ASSETS.rescueOperation,
+    metric: '8 Speedboats Active',
+    contact: 'Naval Radio: Ch-16 VHF',
+  },
+  {
+    id: 'M-ENV-08',
+    title: 'Buriganga River Effluent & Pollution Probe Grid',
+    banglaTitle: 'বুড়িগঙ্গা নদী রাসায়নিক বর্জ্য সেন্সর গ্রিড',
+    type: 'environment',
+    district: 'Postogola, Dhaka (ঢাকা)',
+    lat: 23.6931,
+    lng: 90.4352,
+    severity: 'CRITICAL',
+    status: 'Critical Industrial Effluent',
+    details: 'High turbidity and chemical contamination detected via IoT optical probe. Enforcement squad dispatched to inspect sluice gate.',
+    image: ASSETS.waterPollution,
+    metric: 'pH: 7.9 • DO: 1.1 mg/L',
+    contact: 'Dept of Environment: 1090',
+  },
+  {
+    id: 'M-KUR-09',
+    title: 'Kurigram Brahmaputra River Basin Inundation',
+    banglaTitle: 'কুড়িগ্রাম ব্রহ্মপুত্র নদী প্লাবন ও ভাঙন',
+    type: 'flood',
+    district: 'Kurigram (কুড়িগ্রাম)',
+    lat: 25.8072,
+    lng: 89.6295,
+    severity: 'HIGH',
+    status: 'Embankment Seepage Watch',
+    details: 'Brahmaputra river rising near Chilmari port. Geobag reinforcement squads placing sandbags along embankment.',
+    image: ASSETS.ruralRoad,
+    metric: 'River Discharge: High',
+    contact: 'BWDB Kurigram Office',
+  },
+  {
+    id: 'M-KHU-10',
+    title: 'Sundarbans Mangrove Buffer & Ecological Post',
+    banglaTitle: 'সুন্দরবন ম্যানগ্রোভ প্রাকৃতিক সুরক্ষা বলয়',
+    type: 'environment',
+    district: 'Khulna (খুলনা)',
+    lat: 22.3500,
+    lng: 89.6000,
+    severity: 'SAFE',
+    status: 'Natural Buffer Intact',
+    details: 'UNESCO World Heritage mangrove belt dampening incoming storm surge energy. Forest department patrol active.',
+    image: ASSETS.greenAreas,
+    metric: 'Tidal Swell: 1.6m',
+    contact: 'Forest Patrol Station',
+  },
+];
 
-  // Map bounding box (covering Cascadia metro region roughly around lat 45.45-45.60, lng -122.75 - -122.50)
-  const minLat = 45.45;
-  const maxLat = 45.60;
-  const minLng = -122.75;
-  const maxLng = -122.50;
+// Bangladesh Geographic Coordinate Bounding Box
+const minLat = 20.4;
+const maxLat = 26.8;
+const minLng = 88.0;
+const maxLng = 92.8;
 
-  // Convert lat/lng to percentage X/Y on SVG canvas
-  const toMapCoords = (lat: number, lng: number) => {
-    const x = ((lng - minLng) / (maxLng - minLng)) * 100;
-    const y = 100 - ((lat - minLat) / (maxLat - minLat)) * 100; // invert Y
-    return {
-      x: Math.min(Math.max(x, 5), 95),
-      y: Math.min(Math.max(y, 5), 95),
-    };
+// Accurate projection onto SVG map plane
+const toMapCoords = (lat: number, lng: number) => {
+  const x = ((lng - minLng) / (maxLng - minLng)) * 100;
+  const y = 100 - ((lat - minLat) / (maxLat - minLat)) * 100; // Invert latitude
+  return {
+    x: Math.min(Math.max(x, 4), 96),
+    y: Math.min(Math.max(y, 4), 96),
   };
+};
+
+export default function TacticalMap() {
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [selectedMarker, setSelectedMarker] = useState<BangladeshMarker | null>(BANGLADESH_MARKERS[0]);
+
+  const filteredMarkers = BANGLADESH_MARKERS.filter((m) => {
+    if (activeFilter === 'all') return true;
+    return m.type === activeFilter;
+  });
 
   return (
-    <div className="relative w-full rounded-2xl glass-panel-elevated overflow-hidden border border-slate-700/80 shadow-2xl flex flex-col xl:flex-row h-[680px]">
-      {/* Main Map Canvas Area */}
-      <div className="relative flex-1 bg-slate-950 overflow-hidden flex items-center justify-center select-none">
-        {/* Tactical Grid Background */}
+    <div className="relative w-full rounded-3xl glass-panel-elevated overflow-hidden border border-slate-700/80 shadow-2xl flex flex-col xl:flex-row h-[740px]">
+      {/* Main Map View Area */}
+      <div className="relative flex-1 bg-[#050a12] overflow-hidden flex items-center justify-center select-none">
+        {/* Real Bangladesh Tactical Map Vector Artwork Background */}
+        <div className="absolute inset-0 opacity-20 pointer-events-none mix-blend-screen">
+          <Image
+            src={ASSETS.mapArtwork}
+            alt="Bangladesh Sovereign Geographic Tactical Grid"
+            fill
+            className="object-contain object-center p-4"
+            priority
+          />
+        </div>
+
+        {/* Tactical Coordinate Radar & Grid Overlay */}
         <div
-          className="absolute inset-0 opacity-20 pointer-events-none"
+          className="absolute inset-0 pointer-events-none opacity-20"
           style={{
-            backgroundImage: `radial-gradient(#38bdf8 1px, transparent 1px), linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px)`,
-            backgroundSize: '24px 24px, 60px 60px, 60px 60px',
+            backgroundImage: `radial-gradient(circle at 50% 50%, rgba(2, 132, 199, 0.2) 0%, transparent 60%), linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px)`,
+            backgroundSize: '100% 100%, 36px 36px, 36px 36px',
           }}
         />
 
-        {/* Radar Sweep Effect */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <div className="relative w-[500px] h-[500px] rounded-full border border-cyan-500/10">
-            <div className="absolute inset-4 rounded-full border border-cyan-500/10" />
-            <div className="absolute inset-16 rounded-full border border-cyan-500/10" />
-            {/* Rotating radar beam */}
-            <div
-              className="absolute inset-0 rounded-full animate-radar opacity-30"
-              style={{
-                background: 'conic-gradient(from 0deg, transparent 0deg, transparent 300deg, rgba(6, 182, 212, 0.3) 360deg)',
-              }}
-            />
-          </div>
+        {/* Filter Bar Floating Pills */}
+        <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-1.5 max-w-xl">
+          {[
+            { id: 'all', label: 'All Incidents (সকল)', icon: Compass },
+            { id: 'flood', label: 'Floods (বন্যা)', icon: Droplets, color: 'text-cyan-400' },
+            { id: 'cyclone', label: 'Cyclones (ঘূর্ণিঝড়)', icon: Wind, color: 'text-amber-400' },
+            { id: 'fire', label: 'Fire Service (ফায়ার)', icon: Flame, color: 'text-orange-400' },
+            { id: 'shelter', label: 'Shelters (আশ্রয়)', icon: Home, color: 'text-emerald-400' },
+            { id: 'hospital', label: 'Hospitals (হাসপাতাল)', icon: HeartHandshake, color: 'text-blue-400' },
+            { id: 'rescue', label: 'Rescue SAR (উদ্ধার)', icon: LifeBuoy, color: 'text-rose-400' },
+            { id: 'environment', label: 'Environment (নদী)', icon: Trees, color: 'text-teal-400' },
+          ].map((btn) => {
+            const isSelected = activeFilter === btn.id;
+            return (
+              <button
+                key={btn.id}
+                onClick={() => setActiveFilter(btn.id)}
+                className={`py-1.5 px-3 rounded-xl text-[11px] font-bold transition flex items-center space-x-1 border shadow-md ${
+                  isSelected
+                    ? 'bg-cyan-950 border-cyan-400 text-cyan-300 shadow-cyan-950/60'
+                    : 'bg-slate-900/90 border-slate-700 text-slate-300 hover:border-slate-500'
+                }`}
+              >
+                <span>{btn.label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Top Controls Bar */}
-        <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2">
-          {(
-            [
-              { id: 'all', label: 'All Layers' },
-              { id: 'sos', label: `Active SOS (${sosRequests.filter((s) => s.status !== 'rescued').length})` },
-              { id: 'shelters', label: `Shelters (${shelters.length})` },
-              { id: 'responders', label: `Responders (${responders.length})` },
-            ] as const
-          ).map((btn) => (
-            <button
-              key={btn.id}
-              onClick={() => setActiveFilter(btn.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition border shadow-sm ${
-                activeFilter === btn.id
-                  ? 'bg-cyan-950/80 border-cyan-400 text-cyan-300 shadow-cyan-500/20'
-                  : 'bg-slate-900/80 border-slate-700 text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              {btn.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tactical Telemetry Badge */}
-        <div className="absolute top-4 right-4 z-20 hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-700/80 text-[11px] font-mono text-cyan-400">
-          <Compass className="w-3.5 h-3.5 animate-spin-slow" />
-          <span>GRID 45.51N / -122.67W</span>
+        {/* Tactical Coordinate Telemetry Badge */}
+        <div className="absolute top-4 right-4 z-20 hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700 text-[11px] font-mono text-cyan-400 shadow-lg">
+          <Compass className="w-3.5 h-3.5 animate-spin" />
+          <span>GRID 23.68N / 90.35E (DHAKA DATUM)</span>
           <span className="text-slate-500">|</span>
           <span className="text-emerald-400 flex items-center gap-1">
-            <Radio className="w-3 h-3 animate-pulse" /> SATELLITE SYNC
+            <Radio className="w-3 h-3 animate-pulse" /> BWDB LIVE
           </span>
         </div>
 
-        {/* Interactive SVG Map Layers */}
-        <svg className="w-full h-full absolute inset-0 z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
-          {/* Simulated River Network */}
-          <path
-            d="M 15 25 Q 35 45 48 52 T 85 88"
-            fill="none"
-            stroke="#0284c7"
-            strokeWidth="2.5"
-            strokeOpacity="0.4"
-            strokeDasharray="4 2"
-          />
-
-          {/* Disaster Hazard Zones */}
-          {disasters.map((disaster) => {
-            const { x, y } = toMapCoords(disaster.location.lat, disaster.location.lng);
-            const radius = (disaster.location.radiusKm / 35) * 20;
+        {/* Animated Pins Overlay */}
+        <div className="absolute inset-0 z-10 pointer-events-none">
+          {filteredMarkers.map((marker) => {
+            const { x, y } = toMapCoords(marker.lat, marker.lng);
+            const isSelected = selectedMarker?.id === marker.id;
+            const isCritical = marker.severity === 'CRITICAL';
 
             return (
-              <g
-                key={disaster.id}
-                className="cursor-pointer group"
-                onClick={() => setSelectedItem({ type: 'disaster', data: disaster })}
+              <div
+                key={marker.id}
+                style={{ left: `${x}%`, top: `${y}%` }}
+                onClick={() => setSelectedMarker(marker)}
+                className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer group"
               >
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={radius}
-                  fill={disaster.type === 'flood' ? '#0284c7' : disaster.type === 'wildfire' ? '#ea580c' : '#dc2626'}
-                  fillOpacity="0.15"
-                  stroke={disaster.type === 'flood' ? '#38bdf8' : disaster.type === 'wildfire' ? '#f97316' : '#ef4444'}
-                  strokeWidth="0.75"
-                  strokeDasharray="2 1"
-                  className="animate-pulse"
-                />
-                <circle cx={x} cy={y} r="1.5" fill="#ef4444" />
-              </g>
-            );
-          })}
-        </svg>
+                <div className="relative flex items-center justify-center">
+                  {/* Pulse rings for critical / selected pins */}
+                  {(isCritical || isSelected) && (
+                    <span className="absolute w-10 h-10 rounded-full bg-red-500/40 animate-ping pointer-events-none" />
+                  )}
 
-        {/* HTML Markers Overlay */}
-        <div className="absolute inset-0 z-10 pointer-events-none">
-          {/* SOS Markers */}
-          {(activeFilter === 'all' || activeFilter === 'sos') &&
-            sosRequests.map((sos) => {
-              if (sos.status === 'rescued') return null;
-              const { x, y } = toMapCoords(sos.location.lat, sos.location.lng);
-              const isCritical = sos.priority === 'CRITICAL';
-
-              return (
-                <div
-                  key={sos.id}
-                  style={{ left: `${x}%`, top: `${y}%` }}
-                  onClick={() => setSelectedItem({ type: 'sos', data: sos })}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer group"
-                >
-                  <div className="relative flex items-center justify-center">
-                    {/* Pulsing ring for critical */}
-                    {isCritical && (
-                      <span className="absolute w-8 h-8 rounded-full bg-red-600/50 animate-ping-slow pointer-events-none" />
-                    )}
-                    <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center shadow-lg border-2 transition group-hover:scale-125 ${
-                        isCritical
-                          ? 'bg-red-600 border-white text-white shadow-red-600/50'
-                          : 'bg-amber-500 border-white text-slate-950 shadow-amber-500/50'
-                      }`}
-                    >
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                    </div>
-                    {/* Tooltip on hover */}
-                    <div className="absolute bottom-full mb-1 hidden group-hover:block whitespace-nowrap bg-slate-900/95 border border-slate-700 px-2 py-1 rounded text-[10px] text-white font-mono shadow-xl z-30">
-                      {sos.reporterName}: {sos.priority} ({sos.urgencyScore}/100)
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-          {/* Shelter Markers */}
-          {(activeFilter === 'all' || activeFilter === 'shelters') &&
-            shelters.map((shelter) => {
-              const { x, y } = toMapCoords(shelter.lat, shelter.lng);
-              const isFull = shelter.status === 'full';
-
-              return (
-                <div
-                  key={shelter.id}
-                  style={{ left: `${x}%`, top: `${y}%` }}
-                  onClick={() => setSelectedItem({ type: 'shelter', data: shelter })}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer group"
-                >
                   <div
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center shadow-md border transition group-hover:scale-125 ${
-                      isFull
-                        ? 'bg-slate-700 border-slate-500 text-slate-300'
-                        : 'bg-emerald-600 border-emerald-300 text-white shadow-emerald-600/40'
+                    className={`w-8 h-8 rounded-2xl flex items-center justify-center shadow-xl border-2 transition-transform duration-200 group-hover:scale-125 ${
+                      isSelected
+                        ? 'scale-125 ring-2 ring-cyan-400 border-white'
+                        : ''
+                    } ${
+                      marker.type === 'flood'
+                        ? 'bg-blue-600 border-white text-white'
+                        : marker.type === 'cyclone'
+                        ? 'bg-amber-600 border-white text-white'
+                        : marker.type === 'fire'
+                        ? 'bg-orange-600 border-white text-white'
+                        : marker.type === 'shelter'
+                        ? 'bg-emerald-600 border-white text-white'
+                        : marker.type === 'hospital'
+                        ? 'bg-red-700 border-white text-white'
+                        : marker.type === 'rescue'
+                        ? 'bg-rose-600 border-white text-white'
+                        : 'bg-teal-600 border-white text-white'
                     }`}
                   >
-                    <Home className="w-3.5 h-3.5" />
+                    {marker.type === 'flood' && <Droplets className="w-4 h-4" />}
+                    {marker.type === 'cyclone' && <Wind className="w-4 h-4" />}
+                    {marker.type === 'fire' && <Flame className="w-4 h-4" />}
+                    {marker.type === 'shelter' && <Home className="w-4 h-4" />}
+                    {marker.type === 'hospital' && <HeartHandshake className="w-4 h-4" />}
+                    {marker.type === 'rescue' && <LifeBuoy className="w-4 h-4" />}
+                    {marker.type === 'environment' && <Trees className="w-4 h-4" />}
                   </div>
-                  <div className="absolute bottom-full mb-1 hidden group-hover:block whitespace-nowrap bg-slate-900/95 border border-slate-700 px-2 py-1 rounded text-[10px] text-emerald-300 font-mono shadow-xl z-30">
-                    {shelter.name} ({shelter.currentOccupancy}/{shelter.capacity})
+
+                  {/* Marker Tooltip label */}
+                  <div className="absolute bottom-full mb-1.5 hidden group-hover:flex flex-col items-center whitespace-nowrap bg-slate-950/95 border border-slate-700 px-2.5 py-1 rounded-xl text-[10px] text-white font-mono shadow-2xl z-30 pointer-events-none">
+                    <span className="font-bold">{marker.district}</span>
+                    <span className="text-cyan-400 text-[9px]">{marker.status}</span>
                   </div>
                 </div>
-              );
-            })}
-
-          {/* Responder Teams */}
-          {(activeFilter === 'all' || activeFilter === 'responders') &&
-            responders.map((team) => {
-              const { x, y } = toMapCoords(team.currentLocation.lat, team.currentLocation.lng);
-
-              return (
-                <div
-                  key={team.id}
-                  style={{ left: `${x}%`, top: `${y}%` }}
-                  onClick={() => setSelectedItem({ type: 'responder', data: team })}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer group"
-                >
-                  <div className="w-6 h-6 rounded-full bg-cyan-600 border-2 border-white text-white flex items-center justify-center shadow-md shadow-cyan-600/40 transition group-hover:scale-125">
-                    <Users className="w-3 h-3" />
-                  </div>
-                  <div className="absolute bottom-full mb-1 hidden group-hover:block whitespace-nowrap bg-slate-900/95 border border-slate-700 px-2 py-1 rounded text-[10px] text-cyan-300 font-mono shadow-xl z-30">
-                    {team.name} [{team.status}]
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-
-        {/* Bottom Legend */}
-        <div className="absolute bottom-4 left-4 z-20 flex items-center space-x-4 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/60 text-[11px] text-slate-300 font-medium">
-          <div className="flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
-            <span>Critical SOS</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-emerald-600" />
-            <span>Safe Shelter</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-600" />
-            <span>Responder Unit</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-full border border-sky-400 bg-sky-500/20" />
-            <span>Flood Zone</span>
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Side Inspector Panel */}
-      <div className="w-full xl:w-96 bg-slate-900/95 border-t xl:border-t-0 xl:border-l border-slate-800 p-5 flex flex-col justify-between overflow-y-auto">
-        {selectedItem ? (
+      {/* Right-Hand Inspection Drawer */}
+      <div className="w-full xl:w-96 border-t xl:border-t-0 xl:border-l border-slate-800 bg-[#070e1a]/95 flex flex-col justify-between p-6 overflow-y-auto">
+        {selectedMarker ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <span className="text-[10px] font-mono tracking-wider text-cyan-400 uppercase font-semibold">
-                Inspector // {selectedItem.type.toUpperCase()}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-cyan-400 font-bold uppercase">
+                {selectedMarker.id} • {selectedMarker.type.toUpperCase()}
               </span>
-              <button
-                onClick={() => setSelectedItem(null)}
-                className="text-xs text-slate-400 hover:text-white"
+              <span
+                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                  selectedMarker.severity === 'CRITICAL'
+                    ? 'bg-red-950 text-red-400 border-red-800 animate-pulse'
+                    : selectedMarker.severity === 'HIGH'
+                    ? 'bg-orange-950 text-orange-400 border-orange-800'
+                    : 'bg-emerald-950 text-emerald-400 border-emerald-800'
+                }`}
               >
-                Close ✕
-              </button>
+                {selectedMarker.severity || 'ACTIVE'}
+              </span>
             </div>
 
-            {/* SOS Details */}
-            {selectedItem.type === 'sos' && (
-              <div className="space-y-3">
-                <div className="flex items-start justify-between">
-                  <h3 className="text-base font-bold text-white">{selectedItem.data.reporterName}</h3>
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${
-                      selectedItem.data.priority === 'CRITICAL'
-                        ? 'bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse'
-                        : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                    }`}
-                  >
-                    {selectedItem.data.priority}
-                  </span>
-                </div>
+            {/* Photo from assets */}
+            <div className="relative h-44 w-full rounded-2xl overflow-hidden border border-slate-800 shadow-lg">
+              <Image
+                src={selectedMarker.image}
+                alt={selectedMarker.title}
+                fill
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+              <div className="absolute bottom-2.5 left-3 right-3 text-xs text-white font-bold truncate">
+                {selectedMarker.district}
+              </div>
+            </div>
 
-                <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Urgency Score:</span>
-                    <span className="font-mono font-bold text-red-400">{selectedItem.data.urgencyScore}/100</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Trapped Individuals:</span>
-                    <span className="font-bold text-white">{selectedItem.data.trappedCount} persons</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Injuries:</span>
-                    <span className="font-bold text-amber-400">{selectedItem.data.injuriesCount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Status:</span>
-                    <span className="font-mono text-cyan-400 uppercase">{selectedItem.data.status}</span>
-                  </div>
-                </div>
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-white leading-snug">{selectedMarker.title}</h3>
+              <span className="text-xs font-bangla text-emerald-400 font-semibold block">
+                {selectedMarker.banglaTitle}
+              </span>
+              <p className="text-xs text-slate-300 leading-relaxed pt-1">{selectedMarker.details}</p>
+            </div>
 
-                <div>
-                  <p className="text-xs text-slate-400 mb-1 font-semibold">Victim Situation:</p>
-                  <p className="text-xs text-slate-200 leading-relaxed bg-slate-800/40 p-2.5 rounded-lg border border-slate-700/50">
-                    {selectedItem.data.details}
-                  </p>
-                </div>
-
-                {selectedItem.data.aiTriageSummary && (
-                  <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-800/40 text-xs">
-                    <p className="text-[10px] font-mono text-cyan-400 font-bold mb-1">AI Triage Recommendation:</p>
-                    <p className="text-slate-300 text-[11px] leading-relaxed">{selectedItem.data.aiTriageSummary}</p>
-                  </div>
-                )}
-
-                {selectedItem.data.status === 'pending' && onDispatchSOS && (
-                  <button
-                    onClick={() => {
-                      onDispatchSOS(selectedItem.data.id);
-                      setSelectedItem(null);
-                    }}
-                    className="w-full mt-2 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider transition shadow-md shadow-red-950 flex items-center justify-center space-x-1.5"
-                  >
-                    <Zap className="w-4 h-4" />
-                    <span>Dispatch Rescue Unit Immediately</span>
-                  </button>
-                )}
+            {selectedMarker.metric && (
+              <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
+                <span className="text-slate-400 block text-[10px] font-mono">LIVE TELEMETRY READOUT</span>
+                <span className="text-white font-bold font-mono text-xs">{selectedMarker.metric}</span>
               </div>
             )}
 
-            {/* Shelter Details */}
-            {selectedItem.type === 'shelter' && (
-              <div className="space-y-3">
-                <h3 className="text-base font-bold text-white">{selectedItem.data.name}</h3>
-                <p className="text-xs text-slate-400">{selectedItem.data.address}</p>
-
-                {/* Capacity Progress Bar */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">Occupancy:</span>
-                    <span className="font-mono font-bold text-emerald-400">
-                      {selectedItem.data.currentOccupancy} / {selectedItem.data.capacity} (
-                      {Math.round((selectedItem.data.currentOccupancy / selectedItem.data.capacity) * 100)}%)
-                    </span>
-                  </div>
-                  <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        selectedItem.data.currentOccupancy / selectedItem.data.capacity >= 0.9
-                          ? 'bg-red-500'
-                          : 'bg-emerald-500'
-                      }`}
-                      style={{
-                        width: `${Math.min((selectedItem.data.currentOccupancy / selectedItem.data.capacity) * 100, 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs pt-2">
-                  <div className="p-2 rounded bg-slate-800/60 border border-slate-700/60 flex items-center space-x-1.5">
-                    <span className={selectedItem.data.hasMedical ? 'text-emerald-400' : 'text-slate-500'}>
-                      {selectedItem.data.hasMedical ? '✓ Medical Team' : '✗ No Medical'}
-                    </span>
-                  </div>
-                  <div className="p-2 rounded bg-slate-800/60 border border-slate-700/60 flex items-center space-x-1.5">
-                    <span className={selectedItem.data.hasFood ? 'text-emerald-400' : 'text-slate-500'}>
-                      {selectedItem.data.hasFood ? '✓ Rations Available' : '✗ Low Rations'}
-                    </span>
-                  </div>
-                  <div className="p-2 rounded bg-slate-800/60 border border-slate-700/60 flex items-center space-x-1.5">
-                    <span className={selectedItem.data.hasPower ? 'text-emerald-400' : 'text-slate-500'}>
-                      {selectedItem.data.hasPower ? '✓ Generator Online' : '✗ Off-Grid'}
-                    </span>
-                  </div>
-                  <div className="p-2 rounded bg-slate-800/60 border border-slate-700/60 flex items-center space-x-1.5">
-                    <span className={selectedItem.data.isPetFriendly ? 'text-emerald-400' : 'text-slate-500'}>
-                      {selectedItem.data.isPetFriendly ? '✓ Pets Welcome' : '✗ No Pets'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center space-x-2 text-xs text-slate-300">
-                  <Phone className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{selectedItem.data.contactPhone}</span>
-                </div>
+            {selectedMarker.contact && (
+              <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs flex justify-between items-center">
+                <span className="text-slate-400 text-[11px]">Emergency Hotline:</span>
+                <span className="text-emerald-400 font-bold font-mono">{selectedMarker.contact}</span>
               </div>
             )}
 
-            {/* Responder Team Details */}
-            {selectedItem.type === 'responder' && (
-              <div className="space-y-3">
-                <div className="flex items-start justify-between">
-                  <h3 className="text-base font-bold text-white">{selectedItem.data.name}</h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950 text-cyan-400 border border-cyan-800">
-                    {selectedItem.data.status.toUpperCase()}
-                  </span>
-                </div>
-                <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Team Lead:</span>
-                    <span className="font-semibold text-white">{selectedItem.data.leadName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Personnel:</span>
-                    <span className="font-bold text-cyan-400">{selectedItem.data.membersCount} Specialists</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Radio Frequency:</span>
-                    <span className="font-mono text-amber-400">{selectedItem.data.radioFreq}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Zone:</span>
-                    <span className="text-slate-300">{selectedItem.data.currentLocation.zoneName}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-xs text-slate-400 mb-1 font-semibold">Specialized Equipment:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedItem.data.equipment.map((eq: string, i: number) => (
-                      <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                        {eq}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Disaster Incident Details */}
-            {selectedItem.type === 'disaster' && (
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  {selectedItem.data.type === 'flood' ? (
-                    <Waves className="w-5 h-5 text-sky-400" />
-                  ) : selectedItem.data.type === 'wildfire' ? (
-                    <Flame className="w-5 h-5 text-orange-500" />
-                  ) : (
-                    <AlertTriangle className="w-5 h-5 text-red-500" />
-                  )}
-                  <h3 className="text-base font-bold text-white">{selectedItem.data.title}</h3>
-                </div>
-                <p className="text-xs text-slate-300">{selectedItem.data.description}</p>
-
-                <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Affected Population:</span>
-                    <span className="font-bold text-white">{selectedItem.data.affectedPopulation.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Casualties Reported:</span>
-                    <span className="font-bold text-red-400">{selectedItem.data.casualtiesReported}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Responders Deployed:</span>
-                    <span className="font-bold text-cyan-400">{selectedItem.data.respondersDeployed}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Evacuation Perimeter:</span>
-                    <span className="font-bold text-amber-400">{selectedItem.data.recommendedEvacuationRadiusKm} km</span>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-xs text-slate-400 mb-1 font-semibold">Active Hazards:</p>
-                  <ul className="space-y-1">
-                    {selectedItem.data.activeHazards.map((h: string, idx: number) => (
-                      <li key={idx} className="text-[11px] text-red-300 flex items-center space-x-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                        <span>{h}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
+            <div className="pt-2 flex flex-col gap-2">
+              <Link
+                href="/sos"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold text-xs uppercase tracking-wider text-center transition shadow-lg shadow-red-950"
+              >
+                Dispatch SAR Unit to this Grid
+              </Link>
+              <Link
+                href="/dashboard/citizen"
+                className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs text-center font-semibold transition"
+              >
+                View Nearby Shelter Route
+              </Link>
+            </div>
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-3">
-            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
-              <Compass className="w-6 h-6 animate-pulse" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-200">Tactical Reconnaissance</p>
-              <p className="text-xs text-slate-400 mt-1 max-w-[220px]">
-                Click any marker on the map to inspect victim reports, shelters, disaster perimeters, or dispatch teams.
-              </p>
-            </div>
+          <div className="text-center py-20 text-slate-400 text-xs">
+            Select any marker on the map to inspect incident telemetry.
           </div>
         )}
-
-        <div className="pt-4 border-t border-slate-800 text-[10px] text-slate-500 flex justify-between items-center font-mono">
-          <span>ReliefAI RADAR v3.2</span>
-          <span>LATENCY: 12ms</span>
-        </div>
       </div>
     </div>
   );

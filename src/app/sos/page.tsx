@@ -26,6 +26,7 @@ import { detectDamageWithAI } from '@/lib/gemini/damage-detection';
 import { classifySeverityWithAI } from '@/lib/gemini/severity-classification';
 import { uploadDisasterImage } from '@/lib/firebase/storage';
 import { useNotifications } from '@/context/NotificationContext';
+import { ASSETS } from '@/lib/assets';
 
 const sosSchema = z.object({
   reporterName: z.string().min(2, 'Name is required'),
@@ -72,12 +73,12 @@ export default function SOSReportPage() {
   } = useForm<SOSFormData>({
     resolver: zodResolver(sosSchema),
     defaultValues: {
-      reporterName: 'Marcus Vance',
-      contactPhone: '+1 (555) 234-8901',
-      address: '742 Riverwood Dr, Fluvial District Sector 4',
+      reporterName: 'রফিকুল ইসলাম (Rafiqul Islam)',
+      contactPhone: '+880 1712-345678',
+      address: 'গ্রাম: লামাকাজী, গোয়াইনঘাট উপজেলা, সিলেট (Lamakazi, Gowainghat, Sylhet)',
       disasterType: 'flood',
-      description: 'Water has risen above ground level. 4 people trapped including elderly person on oxygen. Current flowing swiftly outside balcony.',
-      trappedCount: 4,
+      description: 'সুরমা নদীর পানি আকস্মিক বৃদ্ধি পেয়ে ঘরের চাল ছুঁয়েছে। বৃদ্ধা দাদি ও ছোট শিশু সহ ৬ জন আটকা পড়ে আছি। অবিলম্বে স্পিডবোট ও নিরাপদ উদ্ধার প্রয়োজন।',
+      trappedCount: 6,
       injuredCount: 1,
       needsBoat: true,
       needsMedical: true,
@@ -123,15 +124,35 @@ export default function SOSReportPage() {
     }
   };
 
-  const handleSamplePhoto = async (type: 'flood' | 'earthquake') => {
-    const sampleDesc =
-      type === 'flood'
-        ? 'Floodwaters 5 feet deep covering front entrance. Water rising 1 inch every 10 min. Family of 4 stranded on upper balcony.'
-        : 'Stairwell concrete collapsed. Heavy cracked masonry. 3 people trapped in office annex, 1 active compound fracture.';
-    
+  const handleSamplePhoto = async (type: 'flood' | 'fire' | 'rescue') => {
+    let sampleDesc = '';
+    let previewPath = '';
+
+    if (type === 'flood') {
+      sampleDesc = 'সুরমা নদী উপচে ৫ ফুট পানি প্রবেশ করেছে। বিদ্যুৎ বিচ্ছিন্ন ও খাবার পানি শেষ। পরিবারের ৬ জন চালের উপর আটকে আছেন।';
+      previewPath = ASSETS.flood;
+      setValue('disasterType', 'flood');
+      setValue('needsBoat', true);
+      setValue('needsMedical', true);
+      setValue('trappedCount', 6);
+    } else if (type === 'fire') {
+      sampleDesc = 'চকবাজার রাসায়নিক গুদামে তীব্র অগ্নিকাণ্ড ও বিষাক্ত ধোঁয়া। সরু গলিতে ফায়ার সার্ভিসের গাড়ি প্রবেশ বিঘ্নিত। জরুরি উদ্ধারের জন্য ড্রোন ম্যাপিং প্রয়োজন।';
+      previewPath = ASSETS.fireService;
+      setValue('disasterType', 'industrial');
+      setValue('needsBoat', false);
+      setValue('needsMedical', true);
+      setValue('trappedCount', 4);
+    } else {
+      sampleDesc = 'যমুনা নদীর চিলমারী ঘাটে প্রবল ভাঙন ও স্রোত। বাঁধ ভেঙে ১৫টি বসতভিটা তলিয়ে গেছে। স্পিডবোট উদ্ধারকারী দল প্রয়োজন।';
+      previewPath = ASSETS.rescueOperation;
+      setValue('disasterType', 'flood');
+      setValue('needsBoat', true);
+      setValue('needsMedical', false);
+      setValue('trappedCount', 8);
+    }
+
     setValue('description', sampleDesc);
-    setValue('disasterType', type === 'flood' ? 'flood' : 'earthquake');
-    setValue('needsBoat', type === 'flood');
+    setImagePreview(previewPath);
 
     setIsAnalyzingDamage(true);
     const damageResult = await detectDamageWithAI(sampleDesc);
@@ -139,7 +160,7 @@ export default function SOSReportPage() {
       description: sampleDesc,
       trappedCount: Number(formValues.trappedCount),
       injuredCount: Number(formValues.injuredCount),
-      needsBoat: type === 'flood',
+      needsBoat: type === 'flood' || type === 'rescue',
       needsMedical: true,
     });
     setAiDamage(damageResult);
@@ -171,8 +192,8 @@ export default function SOSReportPage() {
           imageUrl: finalImageUrl,
           location: {
             address: data.address,
-            lat: 45.518,
-            lng: -122.672,
+            lat: 25.0760,
+            lng: 91.9750,
           },
         }),
       });
@@ -205,13 +226,13 @@ export default function SOSReportPage() {
       >
         <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-red-950/80 border border-red-500/50 text-red-300 text-xs font-mono uppercase tracking-wider">
           <LifeBuoy className="w-3.5 h-3.5 animate-pulse" />
-          <span>AUTONOMOUS AI-TRIAGED SOS GATEWAY</span>
+          <span>AUTONOMOUS AI-TRIAGED SOS GATEWAY // বাংলাদেশ জাতীয় দুর্যোগ রেসপন্স</span>
         </div>
         <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
           Emergency SOS Report
         </h1>
         <p className="text-slate-400 text-xs sm:text-sm max-w-xl mx-auto">
-          Broadcast your emergency with optional photo damage scanning. Powered by Gemini Multimodal Vision for immediate severity classification.
+          Broadcast your emergency with optional photo damage scanning. Powered by Gemini Multimodal Vision for immediate severity classification and FSCD dispatch.
         </p>
       </motion.div>
 
@@ -230,7 +251,7 @@ export default function SOSReportPage() {
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   INCIDENT LOGGED // ID: {submittedReport.id}
                 </span>
-                <h2 className="text-2xl font-black text-white">Rescue Unit En Route</h2>
+                <h2 className="text-2xl font-black text-white">Rescue Unit En Route (উদ্ধারকারী দল অগ্রসরমান)</h2>
                 <p className="text-xs text-slate-400">{submittedReport.location.address}</p>
               </div>
 
@@ -261,7 +282,7 @@ export default function SOSReportPage() {
                   <span>Assigned Task Force</span>
                 </div>
                 <div className="text-lg font-bold text-white truncate">
-                  {submittedReport.assignedTeamName || 'Cascadia Swift Water Unit B'}
+                  {submittedReport.assignedTeamName || 'FSCD Sylhet Swift-Water Dive Team 1 (ফায়ার সার্ভিস)'}
                 </div>
                 <div className="text-[10px] text-amber-400 font-mono">EQUIPPED: 2x ZODIACS + EMT</div>
               </div>
@@ -272,7 +293,7 @@ export default function SOSReportPage() {
                   <span>Radio Frequency</span>
                 </div>
                 <div className="text-xl font-mono font-bold text-emerald-400">156.800 MHz</div>
-                <div className="text-[10px] text-slate-500 font-mono">TACTICAL CHANNEL 16</div>
+                <div className="text-[10px] text-slate-500 font-mono">VHF CH-16 // FSCD NET</div>
               </div>
             </div>
 
@@ -284,11 +305,11 @@ export default function SOSReportPage() {
                 ← Submit Another Emergency Report
               </button>
               <a
-                href="tel:911"
-                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider flex items-center space-x-2 transition"
+                href="tel:999"
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider flex items-center space-x-2 transition shadow-lg shadow-red-950"
               >
                 <Phone className="w-4 h-4" />
-                <span>Call Emergency Line (911)</span>
+                <span>জাতীয় জরুরি হটলাইন (৯৯৯ / FSCD)</span>
               </a>
             </div>
           </motion.div>
@@ -413,20 +434,27 @@ export default function SOSReportPage() {
                     <Camera className="w-4 h-4 text-cyan-400" />
                     <span>Photo Damage Upload (Gemini Multimodal Vision)</span>
                   </label>
-                  <div className="flex space-x-2">
+                  <div className="flex flex-wrap gap-1.5">
                     <button
                       type="button"
                       onClick={() => handleSamplePhoto('flood')}
-                      className="text-[10px] px-2 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800 font-mono"
+                      className="text-[10px] px-2.5 py-1 rounded-lg bg-sky-950 text-sky-400 border border-sky-800 font-mono hover:bg-sky-900 transition flex items-center gap-1"
                     >
-                      Sample Flood Photo
+                      <span>🌊 সিলেট বন্যা</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleSamplePhoto('earthquake')}
-                      className="text-[10px] px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 font-mono"
+                      onClick={() => handleSamplePhoto('fire')}
+                      className="text-[10px] px-2.5 py-1 rounded-lg bg-amber-950 text-amber-400 border border-amber-800 font-mono hover:bg-amber-900 transition flex items-center gap-1"
                     >
-                      Sample Earthquake
+                      <span>🔥 চকবাজার আগুন</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSamplePhoto('rescue')}
+                      className="text-[10px] px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono hover:bg-emerald-900 transition flex items-center gap-1"
+                    >
+                      <span>🚤 নদী উদ্ধার মিশন</span>
                     </button>
                   </div>
                 </div>

@@ -168,13 +168,15 @@ export interface Shelter {
   capacity: number;
   currentOccupancy: number;
   hasMedical: boolean;
-  hasFood: boolean;
-  hasWater: boolean;
-  hasPower: boolean;
+  hasFood?: boolean;
+  hasWater?: boolean;
+  hasPower?: boolean;
   isPetFriendly: boolean;
-  contactPhone: string;
+  hasSupplies?: boolean;
+  contactPhone?: string;
   contactNumber?: string;
   managedByNGO?: string;
+  updatedAt?: string;
   status: 'open' | 'nearing_capacity' | 'full' | 'closed';
 }
 
