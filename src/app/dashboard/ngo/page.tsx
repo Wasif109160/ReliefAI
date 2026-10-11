@@ -69,8 +69,8 @@ export default function NGODashboard() {
     e.preventDefault();
     const newDist: ReliefDistribution = {
       id: `dist-${Date.now()}`,
-      ngoId: user.uid || 'demo-ngo-3',
-      ngoName: user.organization || 'NGO Task Force',
+      ngoId: user?.uid || user?.id || 'demo-ngo-3',
+      ngoName: user?.organization || 'NGO Task Force',
       itemCategory,
       itemName,
       quantityDistributed: Number(quantity),
@@ -86,7 +86,7 @@ export default function NGODashboard() {
     addNotification({
       targetRole: 'all',
       title: `NGO Convoy Dispatched: ${itemName}`,
-      message: `${quantity} units routed to ${targetZone} by ${user.displayName || user.name}.`,
+      message: `${quantity} units routed to ${targetZone} by ${user?.displayName || user?.name || 'NGO Lead'}.`,
       type: 'success',
       link: '/distribution',
     });
@@ -94,7 +94,7 @@ export default function NGODashboard() {
 
   const markDelivered = (id: string) => {
     setDistributions((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, status: 'delivered', verifiedBy: user.displayName || user.name } : d))
+      prev.map((d) => (d.id === id ? { ...d, status: 'delivered', verifiedBy: user?.displayName || user?.name || 'NGO Officer' } : d))
     );
   };
 
@@ -115,7 +115,7 @@ export default function NGODashboard() {
             NGO Operations Hub
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Coordinating humanitarian relief supply chain, convoys, and shelter fulfillments for <strong className="text-white">{user.organization || 'Red Cross Alliance'}</strong>.
+            Coordinating humanitarian relief supply chain, convoys, and shelter fulfillments for <strong className="text-white">{user?.organization || 'Red Cross Alliance'}</strong>.
           </p>
         </div>
 

@@ -1,12 +1,14 @@
-export type UserRole = 'citizen' | 'volunteer' | 'ngo' | 'admin' | 'commander' | 'responder';
+export type UserRole = 'citizen' | 'rescue_team' | 'ngo' | 'government' | 'admin' | 'volunteer' | 'commander' | 'responder';
 
 export interface User {
-  id?: string;
+  id: string;
   uid?: string;
   name: string;
   displayName?: string;
   email: string;
+  passwordHash?: string;
   role: UserRole;
+  isEmailVerified: boolean;
   badgeNumber?: string;
   organization?: string;
   phone?: string;
@@ -20,12 +22,51 @@ export interface User {
   assignedZone?: string;
   avatar?: string;
   avatarUrl?: string;
-  createdAt?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export type UserProfile = User;
 
-export type DisasterType = 'flood' | 'earthquake' | 'wildfire' | 'hurricane' | 'industrial' | 'medical';
+export interface UserSession {
+  id: string;
+  userId: string;
+  token: string;
+  ipAddress?: string;
+  userAgent?: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface RefreshTokenRecord {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  familyId: string;
+  isRevoked: boolean;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface PasswordResetToken {
+  id: string;
+  userId: string;
+  token: string;
+  expiresAt: string;
+  usedAt?: string;
+  createdAt: string;
+}
+
+export interface EmailVerificationToken {
+  id: string;
+  userId: string;
+  token: string;
+  expiresAt: string;
+  usedAt?: string;
+  createdAt: string;
+}
+
+export type DisasterType = 'flood' | 'earthquake' | 'wildfire' | 'hurricane' | 'industrial' | 'medical' | 'environmental';
 export type SeverityLevel = 'critical' | 'high' | 'moderate' | 'low';
 export type IncidentStatus = 'active' | 'contained' | 'resolved';
 
@@ -56,7 +97,7 @@ export type SOSStatus = 'pending' | 'triaged' | 'dispatched' | 'assigned' | 'in_
 export interface AIDamageAssessment {
   damageType: string;
   damageSeverity: SeverityLevel;
-  structuralRiskScore: number; // 0 - 100
+  structuralRiskScore: number;
   detectedHazards: string[];
   estimatedSurvivorsTrapped: number;
   recommendations: string[];
@@ -64,7 +105,7 @@ export interface AIDamageAssessment {
 }
 
 export interface AISeverityClassification {
-  score: number; // 0 - 100
+  score: number;
   level: SeverityLevel;
   urgencyReason: string;
   requiredRescueUnits: string[];
@@ -84,12 +125,15 @@ export interface SOSRequest {
     lng: number;
     zoneId?: string;
   };
-  urgencyScore: number; // 0 - 100
+  urgencyScore: number;
   priority: SOSPriority;
   status: SOSStatus;
   details: string;
   description?: string;
   imageUrl?: string;
+  videoUrl?: string;
+  voiceNoteUrl?: string;
+  language?: 'en' | 'bn';
   trappedCount: number;
   injuriesCount: number;
   injuredCount?: number;
@@ -108,7 +152,7 @@ export interface SOSRequest {
   assignedTo?: {
     teamId: string;
     teamName: string;
-    responderType: 'volunteer' | 'ngo' | 'emergency_services';
+    responderType: 'volunteer' | 'ngo' | 'emergency_services' | 'rescue_team';
     etaMinutes?: number;
   };
 }

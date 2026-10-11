@@ -1,146 +1,207 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserProfile, UserRole } from '@/lib/types';
-import { auth, isFirebaseConfigured } from '@/lib/firebase/config';
-import { onAuthStateChanged, signOut as fbSignOut } from 'firebase/auth';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { User, UserRole } from '@/lib/types';
+import { useRouter } from 'next/navigation';
 
-const PRESET_USERS: Record<UserRole, UserProfile> = {
-  citizen: {
-    uid: 'demo-citizen-1',
-    name: 'Marcus Vance',
-    displayName: 'Marcus Vance',
-    email: 'marcus.vance@civilian.net',
-    role: 'citizen',
-    phoneNumber: '+1 (555) 234-8901',
-    assignedZone: 'Fluvial District Sector 4',
-    createdAt: new Date().toISOString(),
-  },
-  volunteer: {
-    uid: 'demo-volunteer-2',
-    name: 'Chloe Dubois',
-    displayName: 'Chloe Dubois',
-    email: 'chloe.dubois@volunteer.relief.ai',
-    role: 'volunteer',
-    phoneNumber: '+1 (555) 441-2099',
-    organization: 'Community First Aid Alliance',
-    skills: ['Swift Water Pilot', 'CPR Certified', 'Bilingual Translator'],
-    assignedZone: 'Cascadia Sector 4',
-    createdAt: new Date().toISOString(),
-  },
-  ngo: {
-    uid: 'demo-ngo-3',
-    name: 'Sarah Chen (Red Cross)',
-    displayName: 'Sarah Chen (Red Cross)',
-    email: 'sarah.chen@redcross-alliance.org',
-    role: 'ngo',
-    phoneNumber: '+1 (555) 781-3300',
-    organization: 'International Relief & Red Cross Alliance',
-    assignedZone: 'Regional Warehouse Alpha & Shelters',
-    createdAt: new Date().toISOString(),
-  },
-  admin: {
-    uid: 'demo-admin-4',
-    name: 'Cmdr. Elena Vance',
-    displayName: 'Cmdr. Elena Vance',
-    email: 'elena.vance@relief.ai',
-    role: 'admin',
-    badgeNumber: 'IC-9021',
-    organization: 'Cascadia Joint Emergency Management Agency (CJEMA)',
-    phoneNumber: '+1 (555) 019-2831',
-    assignedZone: 'Cascadia Emergency Ops Center (EOC)',
-    createdAt: new Date().toISOString(),
-  },
-  commander: {
-    uid: 'demo-admin-4',
-    name: 'Cmdr. Elena Vance',
-    displayName: 'Cmdr. Elena Vance',
-    email: 'elena.vance@relief.ai',
-    role: 'commander',
-    badgeNumber: 'IC-9021',
-    organization: 'Cascadia Joint Emergency Management Agency (CJEMA)',
-    phoneNumber: '+1 (555) 019-2831',
-    assignedZone: 'Cascadia Emergency Ops Center (EOC)',
-    createdAt: new Date().toISOString(),
-  },
-  responder: {
-    uid: 'demo-responder-5',
-    name: 'Lt. James Morales',
-    displayName: 'Lt. James Morales',
-    email: 'j.morales@relief.ai',
-    role: 'responder',
-    badgeNumber: 'EMT-P-4402',
-    organization: 'Metro Urban Search & Rescue Task Force 1',
-    phoneNumber: '+1 (555) 782-9901',
-    assignedZone: 'Mobile Command Unit 4',
-    createdAt: new Date().toISOString(),
-  },
-};
-
-interface AuthContextType {
-  user: UserProfile;
+export interface AuthContextType {
+  user: User | null;
   role: UserRole;
-  switchRole: (newRole: UserRole) => void;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string }>;
+  register: (data: {
+    name: string;
+    email: string;
+    password: string;
+    role: UserRole;
+    phone?: string;
+    organization?: string;
+    badgeNumber?: string;
+    assignedZone?: string;
+  }) => Promise<{ success: boolean; error?: string; verificationUrl?: string }>;
   logout: () => Promise<void>;
-  isFirebaseLive: boolean;
+  switchRole: (newRole: UserRole) => Promise<void>;
+  refreshUser: () => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<{ success: boolean; error?: string }>;
 }
 
+const PRESET_CREDENTIALS: Record<string, { email: string; pass: string }> = {
+  admin: { email: 'admin@relief.ai', pass: 'Admin@123456' },
+  government: { email: 'gov@relief.ai', pass: 'Gov@123456' },
+  ngo: { email: 'ngo@relief.ai', pass: 'Ngo@123456' },
+  rescue_team: { email: 'rescue@relief.ai', pass: 'Rescue@123456' },
+  volunteer: { email: 'rescue@relief.ai', pass: 'Rescue@123456' },
+  responder: { email: 'rescue@relief.ai', pass: 'Rescue@123456' },
+  commander: { email: 'admin@relief.ai', pass: 'Admin@123456' },
+  citizen: { email: 'citizen@relief.ai', pass: 'Citizen@123456' },
+};
+
 const AuthContext = createContext<AuthContextType>({
-  user: PRESET_USERS.citizen,
+  user: null,
   role: 'citizen',
-  switchRole: () => {},
+  isAuthenticated: false,
+  isLoading: true,
+  login: async () => ({ success: false }),
+  register: async () => ({ success: false }),
   logout: async () => {},
-  isFirebaseLive: false,
+  switchRole: async () => {},
+  refreshUser: async () => {},
+  updateProfile: async () => ({ success: false }),
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRole] = useState<UserRole>('citizen');
-  const [user, setUser] = useState<UserProfile>(PRESET_USERS.citizen);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
-  useEffect(() => {
-    const saved = localStorage.getItem('reliefai_role') as UserRole | null;
-    if (saved && PRESET_USERS[saved]) {
-      setRole(saved);
-      setUser(PRESET_USERS[saved]);
-    }
-
-    if (isFirebaseConfigured && auth) {
-      const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
-        if (fbUser) {
-          setUser((prev) => ({
-            ...prev,
-            uid: fbUser.uid,
-            email: fbUser.email || prev.email,
-            displayName: fbUser.displayName || prev.displayName || prev.name,
-            name: fbUser.displayName || prev.name,
-          }));
-        }
+  // Fetch current user from /api/auth/me
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/me', {
+        headers: { credentials: 'include' },
+        cache: 'no-store',
       });
-      return () => unsubscribe();
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user || null);
+      } else {
+        setUser(null);
+      }
+    } catch (err) {
+      console.error('Failed to fetch auth session:', err);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
-  const switchRole = (newRole: UserRole) => {
-    setRole(newRole);
-    setUser(PRESET_USERS[newRole]);
-    localStorage.setItem('reliefai_role', newRole);
+  // Periodic token refresh every 10 minutes to maintain active session
+  useEffect(() => {
+    refreshUser();
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: { credentials: 'include' },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user) setUser(data.user);
+        } else if (res.status === 401) {
+          // Token expired or invalid
+          setUser(null);
+        }
+      } catch (e) {
+        console.warn('Background token refresh check:', e);
+      }
+    }, 10 * 60 * 1000); // 10 minutes
+
+    return () => clearInterval(interval);
+  }, [refreshUser]);
+
+  const login = async (email: string, password: string, rememberMe = false) => {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, rememberMe }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || 'Login failed' };
+      }
+      setUser(data.user);
+      return { success: true };
+    } catch {
+      return { success: false, error: 'Network error connecting to auth service' };
+    }
+  };
+
+  const register = async (formData: {
+    name: string;
+    email: string;
+    password: string;
+    role: UserRole;
+    phone?: string;
+    organization?: string;
+    badgeNumber?: string;
+    assignedZone?: string;
+  }) => {
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || 'Registration failed' };
+      }
+      setUser(data.user);
+      return { success: true, verificationUrl: data.verificationUrl };
+    } catch {
+      return { success: false, error: 'Network error connecting to registration service' };
+    }
   };
 
   const logout = async () => {
-    if (isFirebaseConfigured && auth) {
-      await fbSignOut(auth);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+      console.error('Logout error:', e);
+    } finally {
+      setUser(null);
+      router.push('/auth/login');
     }
-    switchRole('citizen');
   };
+
+  // Switch role by logging into corresponding seeded test account
+  const switchRole = async (newRole: UserRole) => {
+    const creds = PRESET_CREDENTIALS[newRole];
+    if (creds) {
+      const res = await login(creds.email, creds.pass);
+      if (res.success) {
+        router.refresh();
+      }
+    }
+  };
+
+  const updateProfile = async (updates: Partial<User>) => {
+    try {
+      const res = await fetch('/api/auth/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || 'Profile update failed' };
+      }
+      setUser(data.user);
+      return { success: true };
+    } catch {
+      return { success: false, error: 'Network error updating profile' };
+    }
+  };
+
+  const currentRole: UserRole = user?.role || 'citizen';
+  const isAuthenticated = Boolean(user);
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        role,
-        switchRole,
+        role: currentRole,
+        isAuthenticated,
+        isLoading,
+        login,
+        register,
         logout,
-        isFirebaseLive: isFirebaseConfigured,
+        switchRole,
+        refreshUser,
+        updateProfile,
       }}
     >
       {children}

@@ -75,8 +75,8 @@ export default function VolunteerDashboard() {
           ? {
               ...t,
               status: 'in_progress',
-              assignedVolunteerId: user.uid,
-              assignedVolunteerName: user.displayName,
+              assignedVolunteerId: user?.id || user?.uid || 'vol-1',
+              assignedVolunteerName: user?.displayName || user?.name || 'Volunteer',
             }
           : t
       )
@@ -89,9 +89,10 @@ export default function VolunteerDashboard() {
     );
   };
 
+  const currentUserId = user?.id || user?.uid || 'demo-volunteer-2';
   const filteredTasks = tasks.filter((t) => {
     if (activeTab === 'open') return t.status === 'open';
-    if (activeTab === 'my') return t.assignedVolunteerId === user.uid;
+    if (activeTab === 'my') return t.assignedVolunteerId === currentUserId;
     return true;
   });
 
@@ -111,7 +112,7 @@ export default function VolunteerDashboard() {
             Volunteer Dashboard
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Logged in as <strong className="text-white">{user.displayName}</strong> ({user.organization || 'Independent Volunteer'}).
+            Logged in as <strong className="text-white">{user?.displayName || user?.name || 'Volunteer Worker'}</strong> ({user?.organization || 'Independent Volunteer'}).
           </p>
         </div>
 
@@ -180,7 +181,7 @@ export default function VolunteerDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredTasks.map((task) => {
           const isCritical = task.priority === 'critical';
-          const isMyTask = task.assignedVolunteerId === user.uid;
+          const isMyTask = task.assignedVolunteerId === currentUserId;
 
           return (
             <div
