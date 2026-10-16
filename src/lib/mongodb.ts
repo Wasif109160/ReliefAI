@@ -10,13 +10,12 @@ interface MongooseCache {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var mongooseCache: MongooseCache | undefined;
 }
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-let cached: MongooseCache = global.mongooseCache || { conn: null, promise: null };
+const cached: MongooseCache = global.mongooseCache || { conn: null, promise: null };
 
 if (!global.mongooseCache) {
   global.mongooseCache = cached;

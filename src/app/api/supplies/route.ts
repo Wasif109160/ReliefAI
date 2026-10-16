@@ -1,12 +1,23 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/server/rbac';
 
 export async function GET() {
-  const supplies = db.getSupplies();
-  return NextResponse.json(supplies);
+  try {
+    const supplies = await db.getSupplies();
+    return NextResponse.json(supplies);
+  } catch (err) {
+    console.error('Error fetching supplies:', err);
+    return NextResponse.json({ error: 'Failed to fetch supplies' }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
+  const auth = await requireAuth(['ngo', 'admin', 'government', 'commander']);
+  if (!auth.authenticated || !auth.user) {
+    return auth.errorResponse!;
+  }
+
   try {
     const body = await req.json();
     const { action, id, quantity } = body;
@@ -16,9 +27,9 @@ export async function POST(req: Request) {
 
     let updated;
     if (action === 'dispatch') {
-      updated = db.dispatchSupply(id, Number(quantity));
+      updated = await db.dispatchSupply(id, Number(quantity));
     } else if (action === 'restock') {
-      updated = db.restockSupply(id, Number(quantity));
+      updated = await db.restockSupply(id, Number(quantity));
     } else {
       return NextResponse.json({ error: 'Invalid action. Must be dispatch or restock' }, { status: 400 });
     }

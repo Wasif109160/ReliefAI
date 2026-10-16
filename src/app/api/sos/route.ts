@@ -1,24 +1,49 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { AIService } from '@/lib/ai/ai-service';
+import { securityUtils, getClientIp } from '@/lib/server/security';
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const priority = searchParams.get('priority');
-  const status = searchParams.get('status');
+  try {
+    const { searchParams } = new URL(req.url);
+    const priority = searchParams.get('priority');
+    const status = searchParams.get('status');
 
-  let requests = db.getSOSRequests();
-  if (priority) {
-    requests = requests.filter((r) => r.priority === priority.toUpperCase());
-  }
-  if (status) {
-    requests = requests.filter((r) => r.status === status.toLowerCase());
-  }
+    let requests = await db.getSOSRequests();
+    if (priority) {
+      requests = requests.filter((r) => r.priority === priority.toUpperCase());
+    }
+    if (status) {
+      requests = requests.filter((r) => r.status === status.toLowerCase());
+    }
 
-  return NextResponse.json(requests);
+    return NextResponse.json(requests);
+  } catch (err) {
+    console.error('Error fetching SOS requests:', err);
+    return NextResponse.json({ error: 'Failed to fetch SOS requests' }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
+  // Rate limiting: max 10 SOS submissions per 60s per client IP
+  const clientIp = getClientIp(req);
+  const rateLimit = await securityUtils.checkPublicRateLimit(clientIp, 'POST_SOS', 10, 60 * 1000);
+  if (!rateLimit.allowed) {
+    const statusCode = rateLimit.status || (rateLimit.isBackendError ? 503 : 429);
+    return NextResponse.json(
+      {
+        error: rateLimit.message,
+        code: rateLimit.isBackendError ? 'RATE_LIMITER_UNAVAILABLE' : 'RATE_LIMIT_EXCEEDED',
+      },
+      {
+        status: statusCode,
+        headers: rateLimit.retryAfterSeconds
+          ? { 'Retry-After': String(rateLimit.retryAfterSeconds) }
+          : undefined,
+      }
+    );
+  }
+
   try {
     const body = await req.json();
 
@@ -35,14 +60,14 @@ export async function POST(req: Request) {
       hasRisingWater: Boolean(body.needsBoat),
     });
 
-    const newSOS = db.createSOS({
+    const newSOS = await db.createSOS({
       reporterName: body.reporterName,
-      phone: body.phone || '+1 (555) 911-0000',
+      phone: body.phone || '+880 1700-000000',
       disasterId: body.disasterId || 'dis-001',
       location: body.location || {
-        address: body.address || 'Reported Location',
-        lat: body.lat || 45.515,
-        lng: body.lng || -122.678,
+        address: body.address || 'Sylhet Division, Bangladesh',
+        lat: body.lat || 24.8949,
+        lng: body.lng || 91.8687,
       },
       urgencyScore: aiAnalysis.urgencyScore,
       priority: aiAnalysis.priority,

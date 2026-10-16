@@ -9,7 +9,7 @@ export interface AuthContextType {
   role: UserRole;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string; code?: string; requiresVerification?: boolean; email?: string }>;
   register: (data: {
     name: string;
     email: string;
@@ -25,17 +25,6 @@ export interface AuthContextType {
   refreshUser: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<{ success: boolean; error?: string }>;
 }
-
-const PRESET_CREDENTIALS: Record<string, { email: string; pass: string }> = {
-  admin: { email: 'admin@relief.ai', pass: 'Admin@123456' },
-  government: { email: 'gov@relief.ai', pass: 'Gov@123456' },
-  ngo: { email: 'ngo@relief.ai', pass: 'Ngo@123456' },
-  rescue_team: { email: 'rescue@relief.ai', pass: 'Rescue@123456' },
-  volunteer: { email: 'rescue@relief.ai', pass: 'Rescue@123456' },
-  responder: { email: 'rescue@relief.ai', pass: 'Rescue@123456' },
-  commander: { email: 'admin@relief.ai', pass: 'Admin@123456' },
-  citizen: { email: 'citizen@relief.ai', pass: 'Citizen@123456' },
-};
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -59,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = useCallback(async () => {
     try {
       const res = await fetch('/api/auth/me', {
-        headers: { credentials: 'include' },
+        credentials: 'include',
         cache: 'no-store',
       });
       if (res.ok) {
@@ -78,13 +67,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Periodic token refresh every 10 minutes to maintain active session
   useEffect(() => {
-    refreshUser();
+    const initTimer = setTimeout(() => {
+      void refreshUser();
+    }, 0);
 
     const interval = setInterval(async () => {
       try {
         const res = await fetch('/api/auth/refresh', {
           method: 'POST',
-          headers: { credentials: 'include' },
+          credentials: 'include',
         });
         if (res.ok) {
           const data = await res.json();
@@ -98,19 +89,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }, 10 * 60 * 1000); // 10 minutes
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initTimer);
+      clearInterval(interval);
+    };
   }, [refreshUser]);
 
   const login = async (email: string, password: string, rememberMe = false) => {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, rememberMe }),
       });
       const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || 'Login failed' };
+        return {
+          success: false,
+          error: data.error || 'Login failed',
+          code: data.code,
+          requiresVerification: data.requiresVerification,
+          email: data.email || email,
+        };
       }
       setUser(data.user);
       return { success: true };
@@ -132,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
@@ -148,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     } catch (e) {
       console.error('Logout error:', e);
     } finally {
@@ -157,14 +159,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Switch role by logging into corresponding seeded test account
+  // Role switching via hardcoded credentials is completely disabled
   const switchRole = async (newRole: UserRole) => {
-    const creds = PRESET_CREDENTIALS[newRole];
-    if (creds) {
-      const res = await login(creds.email, creds.pass);
-      if (res.success) {
-        router.refresh();
-      }
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+    if (user.role === newRole) {
+      router.push(`/dashboard/${newRole === 'volunteer' || newRole === 'responder' ? 'rescue' : newRole}`);
+    } else {
+      console.warn(`[ReliefAI Security] Role switch denied: User possesses role '${user.role}', requested '${newRole}'.`);
     }
   };
 
@@ -172,6 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch('/api/auth/me', {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });

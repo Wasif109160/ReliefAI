@@ -20,7 +20,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
   }
 
-  const users = authDb.getAllUsers();
+  const users = await authDb.getAllUsers();
   return NextResponse.json({ users });
 }
 
@@ -36,7 +36,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const updated = authDb.updateUser(userId, {
+    const updated = await authDb.updateUser(userId, {
       role,
       isEmailVerified,
       assignedZone,

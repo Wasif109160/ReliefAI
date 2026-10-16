@@ -1,21 +1,17 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 import { z } from 'zod';
 import { authDb } from '@/lib/server/auth-db';
-import { signAccessToken, signRefreshToken } from '@/lib/server/jwt';
-import { setAuthCookies } from '@/lib/server/cookies';
-import { UserRole } from '@/lib/types';
+import { emailService } from '@/lib/server/email-service';
+import { securityUtils } from '@/lib/server/security';
 
 const RegisterSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['citizen', 'rescue_team', 'ngo', 'government', 'admin'] as const),
-  phone: z.string().optional(),
-  organization: z.string().optional(),
-  badgeNumber: z.string().optional(),
-  assignedZone: z.string().optional(),
+  phone: z.string().min(7, 'Please enter a valid contact phone number'),
+  role: z.string().optional().default('citizen'),
+  locationName: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -30,84 +26,73 @@ export async function POST(req: Request) {
       );
     }
 
-    const { name, email, password, role, phone, organization, badgeNumber, assignedZone } = result.data;
+    const { name, email, password, phone, role, locationName } = result.data;
+    const cleanEmail = email.toLowerCase().trim();
 
-    // Check if user already exists
-    const existingUser = authDb.findUserByEmail(email);
+    // 1. Enforce Role-Based Registration Governance
+    // Only Citizens can self-register publicly!
+    if (role && role !== 'citizen') {
+      return NextResponse.json(
+        {
+          error:
+            'Public registration is strictly permitted for Citizens only. Rescue Team, NGO, Government, and Admin accounts are provisioned exclusively through official administration channels or the NGO accreditation workflow.',
+          code: 'FORBIDDEN_ROLE_REGISTRATION',
+        },
+        { status: 403 }
+      );
+    }
+
+    // 2. Check if user already exists
+    const existingUser = await authDb.findUserByEmail(cleanEmail);
     if (existingUser) {
       return NextResponse.json(
-        { error: 'An account with this email address already exists' },
+        { error: 'An account with this email address already exists. Please sign in or reset your password.' },
         { status: 409 }
       );
     }
 
-    // Hash password with bcrypt (cost factor 10)
+    // 3. Check rate limiting for OTP generation
+    const rateCheck = securityUtils.checkOtpRateLimit(cleanEmail);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: rateCheck.message || 'Too many verification requests. Please try again later.' },
+        { status: 429 }
+      );
+    }
+
+    // 4. Hash password with bcrypt
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create user in database
-    const user = authDb.createUser({
+    // 5. Create Citizen user (unverified until OTP entered)
+    const user = await authDb.createUser({
       name,
       displayName: name,
-      email,
+      email: cleanEmail,
       passwordHash,
-      role: role as UserRole,
-      phone: phone || '',
-      organization: organization || '',
-      badgeNumber: badgeNumber || '',
-      assignedZone: assignedZone || 'Dhaka Metropolitan Zone',
-      skills: role === 'rescue_team' ? ['First Aid', 'SAR Certified'] : [],
+      role: 'citizen',
+      phone,
       isEmailVerified: false,
+      assignedZone: locationName || 'Bangladesh National Grid',
     });
 
-    // Create email verification token
-    const verificationToken = crypto.randomBytes(24).toString('hex');
-    authDb.createEmailVerificationToken(user.id, verificationToken);
+    // 6. Generate 6-digit numeric OTP (10 minutes validity)
+    const otp = securityUtils.generateNumericOtp();
+    await authDb.createEmailVerificationOtp(user.id, user.email, otp, 'email_verification', 10);
 
-    // Create session
-    const ipAddress = req.headers.get('x-forwarded-for') || '127.0.0.1';
-    const userAgent = req.headers.get('user-agent') || 'Browser';
-    const session = authDb.createSession(user.id, ipAddress, userAgent);
+    // 7. Dispatch verification email via email service
+    await emailService.sendVerificationOtpEmail(user.email, user.name, otp, 10);
 
-    // Create Refresh Token Family
-    const familyId = `fam-${crypto.randomUUID()}`;
-    const refreshToken = await signRefreshToken({
-      userId: user.id,
-      familyId,
-      sessionId: session.id,
-    });
-    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    authDb.storeRefreshToken({
-      userId: user.id,
-      tokenHash,
-      familyId,
-      expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
-    });
-
-    // Sign Access Token
-    const accessToken = await signAccessToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      sessionId: session.id,
-    });
-
-    const sanitizedUser = authDb.sanitizeUser(user);
-
-    const response = NextResponse.json({
-      success: true,
-      message: 'Registration successful! Verification email generated.',
-      user: sanitizedUser,
-      verificationUrl: `/auth/verify-email?token=${verificationToken}`,
-      verificationToken,
-    }, { status: 201 });
-
-    // Set secure HttpOnly cookies
-    return setAuthCookies(response, {
-      accessToken,
-      refreshToken,
-      rememberMe: false,
-    });
+    // 8. Return response requiring OTP verification before login
+    return NextResponse.json(
+      {
+        success: true,
+        requiresVerification: true,
+        email: user.email,
+        message: 'Account created! A 6-digit verification code has been dispatched to your email address.',
+        otpPreview: process.env.NODE_ENV !== 'production' ? otp : undefined,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(

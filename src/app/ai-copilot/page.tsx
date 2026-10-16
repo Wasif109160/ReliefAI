@@ -13,6 +13,20 @@ import {
 } from 'lucide-react';
 import { AIChatMessage } from '@/lib/types';
 
+function createMessage(
+  sender: 'user' | 'assistant',
+  content: string,
+  mode: 'command' | 'citizen'
+): AIChatMessage {
+  return {
+    id: `${sender}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    sender,
+    content,
+    timestamp: new Date().toLocaleTimeString(),
+    mode,
+  };
+}
+
 export default function AICopilotPage() {
   const [mode, setMode] = useState<'command' | 'citizen'>('command');
   const [inputPrompt, setInputPrompt] = useState('');
@@ -34,7 +48,7 @@ export default function AICopilotPage() {
     'Generate comprehensive Incident Action Plan (IAP) for Sylhet flash floods',
     'ঘূর্ণিঝড় ১০ নম্বর মহাবিপদ সংকেতে উপকূলীয় ইভাকুয়েশন প্রটোকল',
     'FSCD ও রেড ক্রিসেন্ট (BDRCS) উদ্ধারকারী দল মোতায়েন বিশ্লেষণ',
-    'Analyze bKash & Nagad emergency relief grant disbursal thresholds',
+    'Analyze emergency relief grant disbursal thresholds for affected upazilas',
   ];
 
   const citizenPrompts = [
@@ -49,13 +63,7 @@ export default function AICopilotPage() {
     const text = textToSend || inputPrompt;
     if (!text.trim() || loading) return;
 
-    const userMsg: AIChatMessage = {
-      id: `user-${Date.now()}`,
-      sender: 'user',
-      content: text,
-      timestamp: new Date().toLocaleTimeString(),
-      mode,
-    };
+    const userMsg = createMessage('user', text, mode);
 
     setMessages((prev) => [...prev, userMsg]);
     setInputPrompt('');
@@ -69,13 +77,11 @@ export default function AICopilotPage() {
       });
       const data = await res.json();
 
-      const aiMsg: AIChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: 'assistant',
-        content: data.reply || 'System standby. Unable to generate response.',
-        timestamp: new Date().toLocaleTimeString(),
-        mode,
-      };
+      const aiMsg = createMessage(
+        'assistant',
+        data.reply || 'System standby. Unable to generate response.',
+        mode
+      );
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
@@ -104,53 +110,56 @@ export default function AICopilotPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Title & Mode Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
-          <div className="flex items-center space-x-2 text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">
-            <Bot className="w-4 h-4 animate-pulse" />
+          <div className="flex items-center space-x-2 text-xs font-bold text-teal-700 uppercase tracking-wider">
+            <Bot className="w-4 h-4 text-teal-600" />
             <span>AUTONOMOUS CRISIS COPILOT // NLP TRIAGE ENGINE</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight mt-1">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mt-1">
             ReliefAI Copilot
           </h1>
+          <p className="text-xs text-slate-500 mt-1 font-bangla font-medium">
+            জরুরি দুর্যোগ ব্যবস্থাপনা ও নাগরিক পরামর্শ সহকারী
+          </p>
         </div>
 
         {/* Dual Mode Switcher */}
-        <div className="flex items-center p-1 rounded-2xl bg-slate-900 border border-slate-800">
+        <div className="flex items-center p-1 rounded-2xl bg-slate-100 border border-slate-200">
           <button
             onClick={() => handleModeSwitch('command')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
               mode === 'command'
-                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Activity className="w-4 h-4" />
+            <Activity className="w-4 h-4 text-blue-600" />
             <span>Incident Command</span>
           </button>
 
           <button
             onClick={() => handleModeSwitch('citizen')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
               mode === 'citizen'
-                ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-white text-teal-700 shadow-xs border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <HeartPulse className="w-4 h-4" />
+            <HeartPulse className="w-4 h-4 text-teal-600" />
             <span>Citizen Life-Safety</span>
           </button>
         </div>
       </div>
 
       {/* Main Chat Interface */}
-      <div className="glass-panel-elevated rounded-3xl border border-slate-800 overflow-hidden flex flex-col h-[650px] shadow-2xl">
+      <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden flex flex-col h-[650px] shadow-xs">
         {/* Chat Header Telemetry Bar */}
-        <div className="bg-slate-900/90 border-b border-slate-800 px-5 py-3 flex items-center justify-between text-xs">
+        <div className="bg-slate-50 border-b border-slate-100 px-5 py-3 flex items-center justify-between text-xs">
           <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-mono text-slate-300">
-              ACTIVE PROTOCOL: <strong className="text-white uppercase">{mode} OPERATIONS</strong>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-slate-600 font-medium">
+              ACTIVE PROTOCOL: <strong className="text-slate-900 uppercase font-bold">{mode} OPERATIONS</strong>
             </span>
           </div>
 
@@ -158,14 +167,14 @@ export default function AICopilotPage() {
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
               title="Toggle audio feedback"
-              className="hover:text-white transition"
+              className="hover:text-slate-700 transition cursor-pointer"
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-cyan-400" /> : <VolumeX className="w-4 h-4" />}
+              {soundEnabled ? <Volume2 className="w-4 h-4 text-teal-600" /> : <VolumeX className="w-4 h-4" />}
             </button>
             <button
               onClick={() => setMessages([])}
               title="Clear transcript"
-              className="hover:text-red-400 transition"
+              className="hover:text-red-600 transition cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -173,7 +182,7 @@ export default function AICopilotPage() {
         </div>
 
         {/* Message Thread */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/40">
           {messages.map((msg) => {
             const isUser = msg.sender === 'user';
             return (
@@ -182,26 +191,24 @@ export default function AICopilotPage() {
                 className={`flex gap-3 max-w-3xl ${isUser ? 'ml-auto justify-end' : 'mr-auto justify-start'}`}
               >
                 {!isUser && (
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-700 p-0.5 shrink-0 shadow-md">
-                    <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                      <Bot className="w-4 h-4 text-cyan-400" />
-                    </div>
+                  <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 p-0.5 shrink-0 flex items-center justify-center shadow-xs">
+                    <Bot className="w-4 h-4 text-teal-600" />
                   </div>
                 )}
 
                 <div
-                  className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-lg ${
+                  className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-xs ${
                     isUser
-                      ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-tr-none'
-                      : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none font-sans'
+                      ? 'bg-blue-600 text-white rounded-tr-none'
+                      : 'bg-white border border-slate-200/90 text-slate-900 rounded-tl-none font-sans'
                   }`}
                 >
-                  <div className="whitespace-pre-line prose prose-invert max-w-none text-xs sm:text-sm">
+                  <div className="whitespace-pre-line prose prose-slate max-w-none text-xs sm:text-sm">
                     {msg.content}
                   </div>
                   <div
                     className={`text-[9px] font-mono mt-2 flex items-center justify-end ${
-                      isUser ? 'text-cyan-200' : 'text-slate-500'
+                      isUser ? 'text-blue-100' : 'text-slate-400'
                     }`}
                   >
                     <span>{msg.timestamp}</span>
@@ -213,10 +220,10 @@ export default function AICopilotPage() {
 
           {loading && (
             <div className="flex gap-3 max-w-md items-center">
-              <div className="w-8 h-8 rounded-xl bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400 animate-pulse">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 animate-pulse">
                 <Bot className="w-4 h-4" />
               </div>
-              <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-2xl text-xs text-cyan-300 font-mono animate-pulse flex items-center space-x-2">
+              <div className="bg-white border border-slate-200 p-3.5 rounded-2xl text-xs text-slate-700 font-mono animate-pulse flex items-center space-x-2 shadow-xs">
                 <span>ReliefAI is synthesizing crisis telemetry & guidelines...</span>
               </div>
             </div>
@@ -224,15 +231,15 @@ export default function AICopilotPage() {
         </div>
 
         {/* Quick Action Suggestion Chips */}
-        <div className="px-5 py-2.5 bg-slate-950/70 border-t border-slate-800/80 flex items-center space-x-2 overflow-x-auto no-scrollbar">
-          <span className="text-[10px] font-mono text-slate-500 uppercase shrink-0 flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-cyan-400" /> QUICK:
+        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center space-x-2 overflow-x-auto no-scrollbar">
+          <span className="text-[10px] text-slate-500 uppercase shrink-0 flex items-center gap-1 font-bold">
+            <Sparkles className="w-3 h-3 text-teal-600" /> QUICK:
           </span>
           {(mode === 'command' ? commandPrompts : citizenPrompts).map((chip, idx) => (
             <button
               key={idx}
               onClick={() => handleSend(chip)}
-              className="text-[11px] whitespace-nowrap px-3 py-1 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition shrink-0"
+              className="text-xs whitespace-nowrap px-3 py-1 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold transition shrink-0 shadow-xs cursor-pointer"
             >
               {chip}
             </button>
@@ -240,7 +247,7 @@ export default function AICopilotPage() {
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 bg-slate-900/90 border-t border-slate-800">
+        <div className="p-4 bg-white border-t border-slate-100">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -257,13 +264,13 @@ export default function AICopilotPage() {
                   ? 'Ask for tactical reports, situation summaries, or resource plans...'
                   : 'Ask for immediate first-aid instructions, shelter locations, or water purification...'
               }
-              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-500 transition"
+              className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition shadow-xs"
             />
 
             <button
               type="submit"
               disabled={loading || !inputPrompt.trim()}
-              className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider transition shadow-md shadow-cyan-950 flex items-center space-x-1.5 shrink-0"
+              className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider transition shadow-xs flex items-center space-x-1.5 shrink-0 cursor-pointer"
             >
               <Send className="w-4 h-4" />
               <span className="hidden sm:inline">Send</span>

@@ -6,8 +6,17 @@ import {
   ResponderTeam,
   AidDonation,
 } from './types';
+import { connectToDatabase, isMongoConfigured } from './mongodb';
+import {
+  DisasterModel,
+  SOSRequestModel,
+  ShelterModel,
+  SupplyModel,
+  ResponderModel,
+  DonationModel,
+} from './models';
 
-// Seed initial data
+// Seed initial Bangladesh data
 export const initialDisasters: DisasterIncident[] = [
   {
     id: 'dis-001',
@@ -461,30 +470,105 @@ const dbInstance: ReliefDatabase = {
   donations: [...initialDonations],
 };
 
+let hasInitializedMongo = false;
+async function initDb() {
+  if (hasInitializedMongo) return;
+  if (isMongoConfigured()) {
+    try {
+      const conn = await connectToDatabase();
+      if (conn) {
+        hasInitializedMongo = true;
+        const { seedMongoIfEmpty } = await import('./mongodb/seed');
+        await seedMongoIfEmpty();
+      }
+    } catch (e) {
+      console.warn('[ReliefAI DB] MongoDB connection skipped, running in-memory fallback:', e);
+    }
+  }
+}
+
 export const db = {
-  getDisasters(): DisasterIncident[] {
+  // Disasters
+  async getDisasters(): Promise<DisasterIncident[]> {
+    await initDb();
+    if (isMongoConfigured()) {
+      try {
+        const items = await DisasterModel.find().lean();
+        if (items && items.length > 0) {
+          return items.map((d: any) => ({
+            ...d,
+            id: d.id,
+            _id: undefined,
+          })) as DisasterIncident[];
+        }
+      } catch (err) {
+        console.warn('Mongo read disasters failed, using in-memory store:', err);
+      }
+    }
     return [...dbInstance.disasters];
   },
-  getDisaster(id: string): DisasterIncident | undefined {
+
+  async getDisaster(id: string): Promise<DisasterIncident | undefined> {
+    await initDb();
+    if (isMongoConfigured()) {
+      try {
+        const item = await DisasterModel.findOne({ id }).lean();
+        if (item) return { ...item, id: (item as any).id, _id: undefined } as DisasterIncident;
+      } catch {}
+    }
     return dbInstance.disasters.find((d) => d.id === id);
   },
-  createDisaster(item: Omit<DisasterIncident, 'id' | 'reportedAt'>): DisasterIncident {
+
+  async createDisaster(item: Omit<DisasterIncident, 'id' | 'reportedAt'>): Promise<DisasterIncident> {
     const newDisaster: DisasterIncident = {
       ...item,
       id: `dis-${Date.now()}`,
       reportedAt: new Date().toISOString(),
     };
     dbInstance.disasters.unshift(newDisaster);
+    if (isMongoConfigured()) {
+      try {
+        await connectToDatabase();
+        await DisasterModel.create(newDisaster);
+      } catch (err) {
+        console.warn('Mongo create disaster failed:', err);
+      }
+    }
     return newDisaster;
   },
 
-  getSOSRequests(): SOSRequest[] {
+  // SOS Requests
+  async getSOSRequests(): Promise<SOSRequest[]> {
+    await initDb();
+    if (isMongoConfigured()) {
+      try {
+        const items = await SOSRequestModel.find().sort({ createdAt: -1 }).lean();
+        if (items && items.length > 0) {
+          return items.map((s: any) => ({
+            ...s,
+            id: s.id,
+            _id: undefined,
+          })) as SOSRequest[];
+        }
+      } catch (err) {
+        console.warn('Mongo read SOS failed, using in-memory store:', err);
+      }
+    }
     return [...dbInstance.sosRequests];
   },
-  getSOS(id: string): SOSRequest | undefined {
+
+  async getSOS(id: string): Promise<SOSRequest | undefined> {
+    await initDb();
+    if (isMongoConfigured()) {
+      try {
+        const item = await SOSRequestModel.findOne({ id }).lean();
+        if (item) return { ...item, id: (item as any).id, _id: undefined } as SOSRequest;
+      } catch {}
+    }
     return dbInstance.sosRequests.find((s) => s.id === id);
   },
-  createSOS(item: Omit<SOSRequest, 'id' | 'createdAt' | 'status'>): SOSRequest {
+
+  async createSOS(item: Omit<SOSRequest, 'id' | 'createdAt' | 'status'>): Promise<SOSRequest> {
     const newSOS: SOSRequest = {
       ...item,
       id: `sos-${Date.now()}`,
@@ -492,35 +576,88 @@ export const db = {
       createdAt: new Date().toISOString(),
     };
     dbInstance.sosRequests.unshift(newSOS);
+    if (isMongoConfigured()) {
+      try {
+        await connectToDatabase();
+        await SOSRequestModel.create(newSOS);
+      } catch (err) {
+        console.warn('Mongo create SOS failed:', err);
+      }
+    }
     return newSOS;
   },
-  updateSOSStatus(
+
+  async updateSOSStatus(
     id: string,
     status: SOSRequest['status'],
     teamId?: string,
     teamName?: string
-  ): SOSRequest | undefined {
+  ): Promise<SOSRequest | undefined> {
     const req = dbInstance.sosRequests.find((s) => s.id === id);
-    if (!req) return undefined;
-    req.status = status;
-    if (teamId) req.assignedTeamId = teamId;
-    if (teamName) req.assignedTeamName = teamName;
-    if (status === 'dispatched' && !req.dispatchEtaMinutes) {
-      req.dispatchEtaMinutes = Math.floor(Math.random() * 12) + 5;
+    if (req) {
+      req.status = status;
+      if (teamId) req.assignedTeamId = teamId;
+      if (teamName) req.assignedTeamName = teamName;
+      if (status === 'dispatched' && !req.dispatchEtaMinutes) {
+        req.dispatchEtaMinutes = Math.floor(Math.random() * 12) + 5;
+      }
+    }
+
+    if (isMongoConfigured()) {
+      try {
+        await connectToDatabase();
+        const updates: any = { status };
+        if (teamId) updates.assignedTeamId = teamId;
+        if (teamName) updates.assignedTeamName = teamName;
+        if (status === 'dispatched' && req?.dispatchEtaMinutes) {
+          updates.dispatchEtaMinutes = req.dispatchEtaMinutes;
+        }
+        const updated = await SOSRequestModel.findOneAndUpdate({ id }, updates, { new: true }).lean();
+        if (updated) {
+          return { ...updated, id: (updated as any).id, _id: undefined } as SOSRequest;
+        }
+      } catch (err) {
+        console.warn('Mongo update SOS failed:', err);
+      }
     }
     return req;
   },
 
-  getShelters(): Shelter[] {
+  // Shelters
+  async getShelters(): Promise<Shelter[]> {
+    await initDb();
+    if (isMongoConfigured()) {
+      try {
+        const items = await ShelterModel.find().lean();
+        if (items && items.length > 0) {
+          return items.map((s: any) => ({
+            ...s,
+            id: s.id,
+            _id: undefined,
+          })) as Shelter[];
+        }
+      } catch (err) {
+        console.warn('Mongo read shelters failed:', err);
+      }
+    }
     return [...dbInstance.shelters];
   },
-  getShelter(id: string): Shelter | undefined {
+
+  async getShelter(id: string): Promise<Shelter | undefined> {
+    await initDb();
+    if (isMongoConfigured()) {
+      try {
+        const item = await ShelterModel.findOne({ id }).lean();
+        if (item) return { ...item, id: (item as any).id, _id: undefined } as Shelter;
+      } catch {}
+    }
     return dbInstance.shelters.find((s) => s.id === id);
   },
-  updateShelterOccupancy(id: string, newOccupancy: number): Shelter | undefined {
+
+  async updateShelterOccupancy(id: string, newOccupancy: number): Promise<Shelter | undefined> {
     const s = dbInstance.shelters.find((shelter) => shelter.id === id);
     if (!s) return undefined;
-    s.currentOccupancy = Math.min(newOccupancy, s.capacity);
+    s.currentOccupancy = Math.max(0, Math.min(newOccupancy, s.capacity));
     if (s.currentOccupancy >= s.capacity) {
       s.status = 'full';
     } else if (s.currentOccupancy >= s.capacity * 0.9) {
@@ -528,13 +665,46 @@ export const db = {
     } else {
       s.status = 'open';
     }
+
+    if (isMongoConfigured()) {
+      try {
+        await connectToDatabase();
+        const updated = await ShelterModel.findOneAndUpdate(
+          { id },
+          { currentOccupancy: s.currentOccupancy, status: s.status },
+          { new: true }
+        ).lean();
+        if (updated) {
+          return { ...updated, id: (updated as any).id, _id: undefined } as Shelter;
+        }
+      } catch (err) {
+        console.warn('Mongo update shelter failed:', err);
+      }
+    }
     return s;
   },
 
-  getSupplies(): SupplyItem[] {
+  // Supplies
+  async getSupplies(): Promise<SupplyItem[]> {
+    await initDb();
+    if (isMongoConfigured()) {
+      try {
+        const items = await SupplyModel.find().lean();
+        if (items && items.length > 0) {
+          return items.map((s: any) => ({
+            ...s,
+            id: s.id,
+            _id: undefined,
+          })) as SupplyItem[];
+        }
+      } catch (err) {
+        console.warn('Mongo read supplies failed:', err);
+      }
+    }
     return [...dbInstance.supplies];
   },
-  dispatchSupply(id: string, qty: number): SupplyItem | undefined {
+
+  async dispatchSupply(id: string, qty: number): Promise<SupplyItem | undefined> {
     const item = dbInstance.supplies.find((sup) => sup.id === id);
     if (!item) return undefined;
     item.allocated += qty;
@@ -544,45 +714,158 @@ export const db = {
     } else if (item.quantity < item.threshold) {
       item.status = 'low';
     }
+
+    if (isMongoConfigured()) {
+      try {
+        await connectToDatabase();
+        const updated = await SupplyModel.findOneAndUpdate(
+          { id },
+          { quantity: item.quantity, allocated: item.allocated, status: item.status },
+          { new: true }
+        ).lean();
+        if (updated) {
+          return { ...updated, id: (updated as any).id, _id: undefined } as SupplyItem;
+        }
+      } catch (err) {
+        console.warn('Mongo dispatch supply failed:', err);
+      }
+    }
     return item;
   },
-  restockSupply(id: string, qty: number): SupplyItem | undefined {
+
+  async restockSupply(id: string, qty: number): Promise<SupplyItem | undefined> {
     const item = dbInstance.supplies.find((sup) => sup.id === id);
     if (!item) return undefined;
     item.quantity += qty;
     if (item.quantity >= item.threshold) {
       item.status = 'adequate';
     }
+
+    if (isMongoConfigured()) {
+      try {
+        await connectToDatabase();
+        const updated = await SupplyModel.findOneAndUpdate(
+          { id },
+          { quantity: item.quantity, status: item.status },
+          { new: true }
+        ).lean();
+        if (updated) {
+          return { ...updated, id: (updated as any).id, _id: undefined } as SupplyItem;
+        }
+      } catch (err) {
+        console.warn('Mongo restock supply failed:', err);
+      }
+    }
     return item;
   },
 
-  getResponders(): ResponderTeam[] {
+  // Responders
+  async getResponders(): Promise<ResponderTeam[]> {
+    await initDb();
+    if (isMongoConfigured()) {
+      try {
+        const items = await ResponderModel.find().lean();
+        if (items && items.length > 0) {
+          return items.map((r: any) => ({
+            ...r,
+            id: r.id,
+            _id: undefined,
+          })) as ResponderTeam[];
+        }
+      } catch (err) {
+        console.warn('Mongo read responders failed:', err);
+      }
+    }
     return [...dbInstance.responders];
   },
-  getResponder(id: string): ResponderTeam | undefined {
+
+  async getResponder(id: string): Promise<ResponderTeam | undefined> {
+    await initDb();
+    if (isMongoConfigured()) {
+      try {
+        const item = await ResponderModel.findOne({ id }).lean();
+        if (item) return { ...item, id: (item as any).id, _id: undefined } as ResponderTeam;
+      } catch {}
+    }
     return dbInstance.responders.find((r) => r.id === id);
   },
-  dispatchResponder(teamId: string, incidentId: string, sosId?: string): ResponderTeam | undefined {
+
+  async dispatchResponder(teamId: string, incidentId: string, sosId?: string): Promise<ResponderTeam | undefined> {
     const team = dbInstance.responders.find((r) => r.id === teamId);
     if (!team) return undefined;
     team.status = 'dispatched';
     team.currentIncidentId = incidentId;
     team.assignedSOSId = sosId;
     team.lastCheckIn = new Date().toISOString();
+
+    if (isMongoConfigured()) {
+      try {
+        await connectToDatabase();
+        const updated = await ResponderModel.findOneAndUpdate(
+          { id: teamId },
+          {
+            status: 'dispatched',
+            currentIncidentId: incidentId,
+            assignedSOSId: sosId,
+            lastCheckIn: team.lastCheckIn,
+          },
+          { new: true }
+        ).lean();
+        if (updated) {
+          return { ...updated, id: (updated as any).id, _id: undefined } as ResponderTeam;
+        }
+      } catch (err) {
+        console.warn('Mongo dispatch responder failed:', err);
+      }
+    }
     return team;
   },
-  updateResponderStatus(teamId: string, status: ResponderTeam['status']): ResponderTeam | undefined {
+
+  async updateResponderStatus(teamId: string, status: ResponderTeam['status']): Promise<ResponderTeam | undefined> {
     const team = dbInstance.responders.find((r) => r.id === teamId);
     if (!team) return undefined;
     team.status = status;
     team.lastCheckIn = new Date().toISOString();
+
+    if (isMongoConfigured()) {
+      try {
+        await connectToDatabase();
+        const updated = await ResponderModel.findOneAndUpdate(
+          { id: teamId },
+          { status, lastCheckIn: team.lastCheckIn },
+          { new: true }
+        ).lean();
+        if (updated) {
+          return { ...updated, id: (updated as any).id, _id: undefined } as ResponderTeam;
+        }
+      } catch (err) {
+        console.warn('Mongo update responder failed:', err);
+      }
+    }
     return team;
   },
 
-  getDonations(): AidDonation[] {
+  // Donations
+  async getDonations(): Promise<AidDonation[]> {
+    await initDb();
+    if (isMongoConfigured()) {
+      try {
+        const items = await DonationModel.find().sort({ timestamp: -1 }).lean();
+        if (items && items.length > 0) {
+          return items.map((d: any) => ({
+            ...d,
+            id: d.id,
+            _id: undefined,
+          })) as AidDonation[];
+        }
+      } catch (err) {
+        console.warn('Mongo read donations failed:', err);
+      }
+    }
     return [...dbInstance.donations];
   },
-  createDonation(item: Omit<AidDonation, 'id' | 'timestamp' | 'txHash'>): AidDonation {
+
+  async createDonation(item: Omit<AidDonation, 'id' | 'timestamp' | 'txHash'>): Promise<AidDonation> {
     const newDonation: AidDonation = {
       ...item,
       id: `don-${Date.now()}`,
@@ -590,27 +873,42 @@ export const db = {
       txHash: `0x${Math.random().toString(16).substring(2, 6)}...${Math.random().toString(16).substring(2, 6)}`,
     };
     dbInstance.donations.unshift(newDonation);
+    if (isMongoConfigured()) {
+      try {
+        await connectToDatabase();
+        await DonationModel.create(newDonation);
+      } catch (err) {
+        console.warn('Mongo create donation failed:', err);
+      }
+    }
     return newDonation;
   },
 
-  getStats() {
-    const totalAffected = dbInstance.disasters.reduce((acc, d) => acc + d.affectedPopulation, 0);
-    const totalResponders = dbInstance.responders.reduce((acc, r) => acc + r.membersCount, 0);
-    const criticalSOSCount = dbInstance.sosRequests.filter(
+  async getStats() {
+    const disasters = await this.getDisasters();
+    const responders = await this.getResponders();
+    const sosRequests = await this.getSOSRequests();
+    const shelters = await this.getShelters();
+    const supplies = await this.getSupplies();
+    const donations = await this.getDonations();
+
+    const totalAffected = disasters.reduce((acc, d) => acc + d.affectedPopulation, 0);
+    const totalResponders = responders.reduce((acc, r) => acc + r.membersCount, 0);
+    const criticalSOSCount = sosRequests.filter(
       (s) => s.priority === 'CRITICAL' && (s.status === 'pending' || s.status === 'triaged')
     ).length;
-    const totalSheltered = dbInstance.shelters.reduce((acc, s) => acc + s.currentOccupancy, 0);
-    const totalAidRaised = dbInstance.donations.reduce((acc, d) => acc + d.amount, 0);
+    const totalSheltered = shelters.reduce((acc, s) => acc + s.currentOccupancy, 0);
+    const totalAidRaised = donations.reduce((acc, d) => acc + d.amount, 0);
 
     return {
-      activeDisastersCount: dbInstance.disasters.filter((d) => d.status === 'active').length,
+      activeDisastersCount: disasters.filter((d) => d.status === 'active').length,
       totalAffected,
       totalResponders,
       criticalSOSCount,
       totalSheltered,
       totalAidRaised,
-      suppliesCount: dbInstance.supplies.length,
-      sosPendingCount: dbInstance.sosRequests.filter((s) => s.status === 'pending').length,
+      suppliesCount: supplies.length,
+      sosPendingCount: sosRequests.filter((s) => s.status === 'pending').length,
     };
   },
 };

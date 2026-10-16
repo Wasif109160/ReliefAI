@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { InAppNotification } from '@/lib/types';
 
 interface NotificationContextType {
@@ -103,18 +103,18 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       {children}
       {/* Active Toast Notification Overlay */}
       {activeToast && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full p-4 rounded-2xl glass-panel-elevated border border-red-500/50 shadow-2xl animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full p-4 rounded-2xl bg-white border border-red-500/80 shadow-xl animate-in fade-in slide-in-from-bottom-5 duration-200">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
-              <span className="text-[10px] font-mono font-bold text-red-400 uppercase tracking-widest block">
+              <span className="text-[10px] font-mono font-bold text-red-600 uppercase tracking-widest block">
                 {activeToast.type === 'urgent' ? '🚨 EMERGENCY DISPATCH' : 'ℹ️ NOTIFICATION'}
               </span>
-              <h4 className="text-xs font-bold text-white">{activeToast.title}</h4>
-              <p className="text-xs text-slate-300 leading-relaxed">{activeToast.message}</p>
+              <h4 className="text-xs font-bold text-slate-900">{activeToast.title}</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">{activeToast.message}</p>
             </div>
             <button
               onClick={dismissToast}
-              className="text-xs text-slate-400 hover:text-white"
+              className="text-xs text-slate-400 hover:text-slate-700 cursor-pointer"
             >
               ✕
             </button>

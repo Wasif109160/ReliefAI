@@ -29,35 +29,35 @@ export default function ForbiddenPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-8">
       <div className="relative inline-flex items-center justify-center">
-        <div className="w-24 h-24 rounded-3xl bg-red-950/60 border border-red-600/50 flex items-center justify-center text-red-500 shadow-2xl shadow-red-950/80 animate-pulse">
+        <div className="w-24 h-24 rounded-3xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shadow-xs">
           <ShieldX className="w-12 h-12" />
         </div>
       </div>
 
       <div className="space-y-3">
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-red-950/40 border border-red-800 text-xs font-mono text-red-400 uppercase tracking-widest">
+        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-xs font-mono text-red-700 uppercase tracking-widest font-bold">
           <LockKeyhole className="w-3.5 h-3.5" />
           <span>ACCESS RESTRICTED (HTTP 403)</span>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-black text-white">Insufficient Clearance Level</h1>
-        <p className="text-sm text-slate-400 max-w-lg mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900">Insufficient Clearance Level</h1>
+        <p className="text-sm text-slate-600 max-w-lg mx-auto font-medium">
           Your authenticated account does not possess the Role-Based Access Control (RBAC) privileges required to inspect this operational sector.
         </p>
       </div>
 
       {user && (
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 max-w-md mx-auto text-xs text-left space-y-2">
-          <div className="flex justify-between items-center text-slate-400">
+        <div className="p-5 rounded-3xl bg-white border border-slate-200/90 shadow-xs max-w-md mx-auto text-xs text-left space-y-2.5">
+          <div className="flex justify-between items-center text-slate-600">
             <span>Logged in as:</span>
-            <span className="font-semibold text-white">{user.name}</span>
+            <span className="font-bold text-slate-900">{user.name}</span>
           </div>
-          <div className="flex justify-between items-center text-slate-400">
+          <div className="flex justify-between items-center text-slate-600">
             <span>Your Assigned Role:</span>
-            <span className="font-mono text-cyan-400 uppercase font-bold">{role}</span>
+            <span className="font-mono text-blue-700 uppercase font-bold">{role}</span>
           </div>
-          <div className="flex justify-between items-center text-slate-400">
+          <div className="flex justify-between items-center text-slate-600">
             <span>Organization:</span>
-            <span className="text-slate-300">{user.organization || 'Public Network'}</span>
+            <span className="text-slate-800 font-medium">{user.organization || 'Public Network'}</span>
           </div>
         </div>
       )}
@@ -65,16 +65,16 @@ export default function ForbiddenPage() {
       <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
         <Link
           href={getDashboardForRole(role)}
-          className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 py-3 px-6 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-cyan-950"
+          className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 py-3 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider transition shadow-xs cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Go to My Authorized Dashboard</span>
         </Link>
         <button
           onClick={() => logout()}
-          className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 py-3 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs uppercase tracking-wider transition border border-slate-700"
+          className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 py-3 px-6 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs uppercase tracking-wider transition border border-slate-200 shadow-xs cursor-pointer"
         >
-          <LogIn className="w-4 h-4" />
+          <LogIn className="w-4 h-4 text-slate-500" />
           <span>Switch Account</span>
         </button>
       </div>

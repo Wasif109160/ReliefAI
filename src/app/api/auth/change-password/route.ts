@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     }
 
     const { currentPassword, newPassword } = result.data;
-    const user = authDb.findUserById(payload.userId);
+    const user = await authDb.findUserById(payload.userId);
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -47,8 +47,7 @@ export async function POST(req: Request) {
     }
 
     // Hash new password
-    const newHash = await bcrypt.hash(newPassword, 10);
-    authDb.updateUserPassword(user.id, newHash);
+    await authDb.updateUserPassword(user.id, newPassword);
 
     return NextResponse.json({
       success: true,

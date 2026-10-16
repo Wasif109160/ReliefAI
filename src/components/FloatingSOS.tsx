@@ -2,88 +2,91 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { LifeBuoy, AlertTriangle, PhoneCall, X, ShieldAlert, ArrowRight } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { LifeBuoy, AlertTriangle, PhoneCall, X, ArrowRight, AlertOctagon } from 'lucide-react';
 
 export default function FloatingSOS() {
-  const { role } = useAuth();
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end">
       {/* Quick Emergency Modal Popup */}
       {open && (
-        <div className="mb-3 w-80 glass-panel-elevated p-5 rounded-3xl border border-red-500/50 shadow-2xl animate-in fade-in slide-in-from-bottom-5 duration-200">
-          <div className="flex items-start justify-between pb-3 border-b border-slate-800">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-xl bg-red-600/20 border border-red-500 flex items-center justify-center text-red-500 animate-pulse">
-                <AlertTriangle className="w-4 h-4" />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Quick Emergency SOS Panel"
+          className="mb-3 w-84 max-w-[calc(100vw-2rem)] p-5 rounded-2xl border border-slate-200 shadow-2xl bg-white text-slate-900 animate-in fade-in slide-in-from-bottom-4 duration-200"
+        >
+          <div className="flex items-start justify-between pb-3.5 border-b border-slate-100">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-9 h-9 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shadow-xs">
+                <AlertTriangle className="w-4 h-4 animate-pulse" />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider font-mono">
                   EMERGENCY SOS BEACON
                 </h3>
-                <span className="text-[10px] text-red-400 font-semibold font-bangla">
-                  জরুরি বিপদ সংকেত
+                <span className="text-[11px] text-red-600 font-bold font-bangla">
+                  জাতীয় জরুরি বিপদ সংকেত
                 </span>
               </div>
             </div>
             <button
               onClick={() => setOpen(false)}
-              className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+              aria-label="Close emergency beacon popover"
+              className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="py-3 space-y-2 text-xs text-slate-300">
-            <p className="leading-snug">
-              Direct emergency satellite and cellular mesh dispatch to Bangladesh Fire Service, Armed Forces, and nearest SAR units.
+          <div className="py-3.5 space-y-2.5 text-xs text-slate-600">
+            <p className="leading-relaxed">
+              Direct emergency satellite and cellular mesh dispatch to Bangladesh Fire Service (FSCD), Armed Forces, and local SAR task forces.
             </p>
-            <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-slate-800 font-mono text-[11px]">
-              <span className="text-slate-400">Toll-Free Hotline:</span>
-              <a href="tel:999" className="text-emerald-400 font-bold hover:underline">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-200 font-mono text-[11px]">
+              <span className="text-slate-700 font-medium">Toll-Free Hotline:</span>
+              <a href="tel:999" className="text-red-700 font-black hover:text-red-800 hover:underline">
                 999 (National SOS)
               </a>
             </div>
           </div>
 
-          <div className="pt-2 flex flex-col gap-2">
+          <div className="pt-1 flex flex-col gap-2.5">
             <Link
               href="/sos"
               onClick={() => setOpen(false)}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-red-950 flex items-center justify-center space-x-2"
+              className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center space-x-2"
             >
-              <ShieldAlert className="w-4 h-4" />
-              <span>Full Emergency Triage</span>
+              <AlertOctagon className="w-4 h-4 text-white" />
+              <span>Full Emergency Dispatch Form</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
-            <Link
-              href="/dashboard/citizen"
-              onClick={() => setOpen(false)}
-              className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-center font-bold text-[11px] transition"
+
+            <a
+              href="tel:999"
+              className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-bold text-xs transition flex items-center justify-center space-x-2"
             >
-              Open Citizen Safety Hub (নাগরিক ড্যাশবোর্ড)
-            </Link>
+              <PhoneCall className="w-3.5 h-3.5 text-red-600" />
+              <span>Direct Hotline: Dial 999</span>
+            </a>
           </div>
         </div>
       )}
 
-      {/* Trigger Button */}
-      <button
-        onClick={() => setOpen(!open)}
-        className="group relative flex items-center space-x-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs uppercase tracking-wider transition shadow-2xl shadow-red-950 border border-red-400/40 hover:scale-105 active:scale-95"
-      >
-        <span className="relative flex h-3.5 w-3.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-200" />
-        </span>
-        <LifeBuoy className="w-4 h-4 animate-spin text-white" />
-        <span className="tracking-widest">SOS REPORT</span>
-        <span className="hidden sm:inline font-bangla text-amber-200 font-semibold text-[11px]">
-          (জরুরি সাহায্য)
-        </span>
-      </button>
+      {/* Main Floating Beacon Button */}
+      <div className="relative">
+        <button
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          aria-label="Toggle Emergency SOS Beacon options"
+          className="relative flex items-center space-x-2.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white px-5 py-3.5 rounded-full font-black text-xs uppercase tracking-wider transition shadow-lg hover:shadow-xl border-2 border-white focus-visible:ring-2 focus-visible:ring-red-500 cursor-pointer"
+        >
+          <LifeBuoy className="w-4 h-4 text-white" />
+          <span>SOS BEACON</span>
+          <span className="font-bangla text-xs text-red-100 font-bold">(জরুরি)</span>
+        </button>
+      </div>
     </div>
   );
 }

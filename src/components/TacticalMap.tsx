@@ -6,26 +6,17 @@ import Link from 'next/link';
 import {
   AlertTriangle,
   Home,
-  Users,
   Compass,
   Radio,
-  ExternalLink,
-  Phone,
   Flame,
-  Waves,
-  Zap,
   Droplets,
   Trees,
-  Truck,
-  Building2,
-  CheckCircle2,
-  X,
-  Navigation,
   Wind,
   HeartHandshake,
   LifeBuoy,
 } from 'lucide-react';
 import { ASSETS } from '@/lib/assets';
+import { DisasterIncident, SOSRequest, Shelter, ResponderTeam } from '@/lib/types';
 
 export interface BangladeshMarker {
   id: string;
@@ -61,62 +52,62 @@ const BANGLADESH_MARKERS: BangladeshMarker[] = [
   },
   {
     id: 'M-SUN-02',
-    title: 'Sunamganj Haor Basin Water Inundation',
-    banglaTitle: 'সুনামগঞ্জ হাওর এলাকা জলমগ্নতা',
+    title: 'Sunamganj Haor Flash Inundation Zone',
+    banglaTitle: 'সুনামগঞ্জ হাওর আকস্মিক প্লাবন অঞ্চল',
     type: 'flood',
     district: 'Sunamganj (সুনামগঞ্জ)',
-    lat: 25.0715,
-    lng: 91.3992,
+    lat: 25.0658,
+    lng: 91.3950,
     severity: 'CRITICAL',
-    status: 'Severed Road Access',
-    details: 'Tahrapur and Shalla upazilas disconnected by road. BDRCS motorized speedboats ferrying emergency rice and oral saline.',
+    status: 'Haor Water Rising 5 cm/hr',
+    details: 'Taharpur and Bishwamvarpur severed from road connectivity. Inflatable dinghies dispatched with dry food packets.',
     image: ASSETS.flood,
-    metric: 'Haor Water Depth: 3.4m',
-    contact: 'District EOC: 01712-000000',
+    metric: 'River Flow: 3.4 m/s',
+    contact: 'DC Control Room: 01700-000000',
   },
   {
     id: 'M-COX-03',
-    title: 'Bay of Bengal Cyclone Storm Surge Warning',
-    banglaTitle: 'বঙ্গোপসাগর ঘূর্ণিঝড় পূর্বাভাস সংকেত ৪',
+    title: 'Bay of Bengal Cyclone Early Warning & Shelters',
+    banglaTitle: 'বঙ্গোপসাগর ঘূর্ণিঝড় পূর্বাভাস ও আশ্রয়কেন্দ্র',
     type: 'cyclone',
-    district: 'Cox&apos;s Bazar (কক্সবাজার)',
+    district: 'Cox\'s Bazar (কক্সবাজার)',
     lat: 21.4272,
-    lng: 91.9702,
+    lng: 92.0058,
     severity: 'HIGH',
-    status: 'Signal No. 4 Alert',
-    details: 'Deep depression tracking northward. Coastal fishing trawlers advised to stay anchored in St. Martin&apos;s channel.',
+    status: 'Signal No. 4 Alert Active',
+    details: 'Deep depression in Bay of Bengal expected to make landfall near Kutubdia island within 24 hours. Coastal fishing boats called to port.',
     image: ASSETS.cycloneShelter,
-    metric: 'Gust: 82 km/h • Wave: 2.8m',
-    contact: 'Cyclone Early Warning: 1090',
+    metric: 'Max Wind: 88 km/h',
+    contact: 'Cyclone Warning: 1090',
   },
   {
     id: 'M-DHK-04',
-    title: 'Dhaka Metropolitan Fire Service & USAR HQ',
-    banglaTitle: 'ফায়ার সার্ভিস কেন্দ্রীয় কমান্ড ও আরবান রেসকিউ',
+    title: 'Dhaka Fire Service USAR Headquarters',
+    banglaTitle: 'ঢাকা ফায়ার সার্ভিস ও সিভিল ডিফেন্স সদর দফতর',
     type: 'fire',
-    district: 'Dhaka (ঢাকা)',
+    district: 'Dhaka Central (ঢাকা)',
     lat: 23.8103,
     lng: 90.4125,
-    severity: 'MEDIUM',
-    status: 'Standby Rescue Readiness',
-    details: 'Heavy hydraulic equipment and drone mapping units ready for urban structural collapse and industrial fire mitigation.',
+    severity: 'SAFE',
+    status: 'Standby for Nationwide Air-Lift',
+    details: 'Specialized Urban Search and Rescue squads equipped with satellite communication gear, ready for deployment on MI-17 helicopters.',
     image: ASSETS.fireService,
-    metric: '12 Heavy Squads Active',
-    contact: 'FSCD Central: 999',
+    metric: 'Readiness: 100% Operational',
+    contact: 'Fire Service HQ: 02-9555555',
   },
   {
     id: 'M-SHL-05',
-    title: 'Teknaf Coastal Multi-Purpose Cyclone Shelter',
-    banglaTitle: 'টেকনাফ উপকূলীয় বহুমুখী ঘূর্ণিঝড় আশ্রয়কেন্দ্র',
+    title: 'Banshkhalo Reinforced Multi-Purpose Shelter',
+    banglaTitle: 'বাঁশখালী বহুমুখী সাইক্লোন শেল্টার',
     type: 'shelter',
-    district: 'Teknaf (টেকনাফ)',
-    lat: 20.8654,
-    lng: 92.2983,
+    district: 'Chittagong Coastal (চট্টগ্রাম)',
+    lat: 22.0400,
+    lng: 91.9500,
     severity: 'SAFE',
-    status: 'OPEN (720 / 1,000 Capacity)',
-    details: 'Reinforced 3-story concrete shelter with rooftop solar power, rainwater harvesting bladders, and gender-segregated safe dorms.',
+    status: 'Open • 420 Capacity (80 Occupied)',
+    details: 'Three-story elevated concrete structure with rooftop rainwater harvesting tanks and dedicated livestock refuge on ground level.',
     image: ASSETS.cycloneShelter,
-    metric: 'Occupancy: 72%',
+    metric: 'Solar Power: 100% Battery',
     contact: 'Shelter Warden: 01819-000000',
   },
   {
@@ -212,35 +203,167 @@ const toMapCoords = (lat: number, lng: number) => {
   };
 };
 
-export default function TacticalMap() {
-  const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [selectedMarker, setSelectedMarker] = useState<BangladeshMarker | null>(BANGLADESH_MARKERS[0]);
+export interface TacticalMapProps {
+  disasters?: DisasterIncident[];
+  sosRequests?: SOSRequest[];
+  shelters?: Shelter[];
+  responders?: ResponderTeam[];
+  isLoading?: boolean;
+}
 
-  const filteredMarkers = BANGLADESH_MARKERS.filter((m) => {
+function isValidBangladeshCoord(lat?: number, lng?: number): boolean {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return false;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  return lat >= 20.0 && lat <= 27.0 && lng >= 88.0 && lng <= 93.0;
+}
+
+export default function TacticalMap({
+  disasters,
+  sosRequests,
+  shelters,
+  responders,
+  isLoading = false,
+}: TacticalMapProps = {}) {
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
+
+  const isLiveMode = Boolean(disasters || sosRequests || shelters || responders);
+
+  const liveMarkers: BangladeshMarker[] = React.useMemo(() => {
+    if (!isLiveMode) return [];
+    const list: BangladeshMarker[] = [];
+
+    if (disasters && Array.isArray(disasters)) {
+      for (const d of disasters) {
+        if (d.location && isValidBangladeshCoord(d.location.lat, d.location.lng)) {
+          list.push({
+            id: d.id,
+            title: d.title,
+            banglaTitle: d.title,
+            type: d.type === 'hurricane' ? 'cyclone' : d.type === 'wildfire' || d.type === 'industrial' ? 'fire' : 'flood',
+            district: d.location.name || 'Disaster Incident Zone',
+            lat: d.location.lat,
+            lng: d.location.lng,
+            severity: d.severity === 'critical' ? 'CRITICAL' : d.severity === 'high' ? 'HIGH' : 'MEDIUM',
+            status: `${d.severity?.toUpperCase() || 'ACTIVE'} • ${d.affectedPopulation ? `${d.affectedPopulation.toLocaleString()} Affected` : 'Active Hazard'}`,
+            details: d.description || (d.activeHazards && d.activeHazards.join(', ')) || 'Active disaster incident reported.',
+            image: d.type === 'flood' ? ASSETS.flood : d.type === 'hurricane' ? ASSETS.cycloneShelter : ASSETS.fireService,
+            metric: `Responders: ${d.respondersDeployed ?? 0} | Evac Radius: ${d.recommendedEvacuationRadiusKm ?? 10}km`,
+            contact: 'National Disaster Helpline: 1090',
+          });
+        }
+      }
+    }
+
+    if (sosRequests && Array.isArray(sosRequests)) {
+      for (const s of sosRequests) {
+        if (s.status !== 'resolved' && s.status !== 'cancelled' && s.location && isValidBangladeshCoord(s.location.lat, s.location.lng)) {
+          list.push({
+            id: s.id,
+            title: `SOS: ${s.reporterName} (${s.trappedCount} citizens)`,
+            banglaTitle: `জরুরি উদ্ধার সংকেত: ${s.reporterName}`,
+            type: 'rescue',
+            district: s.location.address || 'Field Rescue Coordinates',
+            lat: s.location.lat,
+            lng: s.location.lng,
+            severity: s.priority === 'CRITICAL' ? 'CRITICAL' : s.priority === 'HIGH' ? 'HIGH' : 'MEDIUM',
+            status: `STATUS: ${s.status?.toUpperCase()} • PRIORITY: ${s.priority}`,
+            details: s.details || (s.specialNeeds && s.specialNeeds.join(', ')) || 'Emergency assistance requested.',
+            image: ASSETS.rescueOperation,
+            metric: `Trapped: ${s.trappedCount} citizens | Urgent Score: ${s.urgencyScore ?? 0}`,
+            contact: s.phone ? `Caller: ${s.phone}` : 'Emergency Hotline: 999',
+          });
+        }
+      }
+    }
+
+    if (shelters && Array.isArray(shelters)) {
+      for (const sh of shelters) {
+        if (isValidBangladeshCoord(sh.lat, sh.lng)) {
+          list.push({
+            id: sh.id,
+            title: sh.name,
+            banglaTitle: sh.name,
+            type: 'shelter',
+            district: sh.address,
+            lat: sh.lat,
+            lng: sh.lng,
+            severity: sh.status === 'full' ? 'CRITICAL' : sh.status === 'nearing_capacity' ? 'HIGH' : 'SAFE',
+            status: `OCCUPANCY: ${sh.currentOccupancy} / ${sh.capacity} (${sh.status.toUpperCase()})`,
+            details: `Medical Support: ${sh.hasMedical ? 'Yes' : 'No'} • Supplies: ${sh.hasSupplies ? 'Available' : 'None'} • Pets: ${sh.isPetFriendly ? 'Allowed' : 'No'}`,
+            image: ASSETS.cycloneShelter,
+            metric: `Capacity Utilized: ${Math.round((sh.currentOccupancy / (sh.capacity || 1)) * 100)}%`,
+            contact: sh.contactPhone || 'Disaster Shelter Cell',
+          });
+        }
+      }
+    }
+
+    if (responders && Array.isArray(responders)) {
+      for (const r of responders) {
+        if (r.currentLocation && isValidBangladeshCoord(r.currentLocation.lat, r.currentLocation.lng)) {
+          list.push({
+            id: r.id,
+            title: r.name,
+            banglaTitle: `${r.name} (${r.type})`,
+            type: 'rescue',
+            district: r.currentLocation.zoneName || 'Operational Zone',
+            lat: r.currentLocation.lat,
+            lng: r.currentLocation.lng,
+            severity: r.status === 'dispatched' || r.status === 'on_scene' ? 'HIGH' : 'SAFE',
+            status: `UNIT STATUS: ${r.status.toUpperCase()} • ${r.membersCount} PERSONNEL`,
+            details: `Lead: ${r.leadName} | Freq: ${r.radioFreq} • Equipment: ${r.equipment?.join(', ') || 'Standard Kit'}`,
+            image: ASSETS.rescueOperation,
+            metric: `Comms: ${r.radioFreq} | Incident: ${r.currentIncidentId || 'Standby'}`,
+            contact: `Radio Net: ${r.radioFreq}`,
+          });
+        }
+      }
+    }
+
+    return list;
+  }, [isLiveMode, disasters, sosRequests, shelters, responders]);
+
+  const activeMarkers = isLiveMode ? liveMarkers : BANGLADESH_MARKERS;
+
+  const filteredMarkers = activeMarkers.filter((m) => {
     if (activeFilter === 'all') return true;
     return m.type === activeFilter;
   });
 
+  const selectedMarker = filteredMarkers.find((m) => m.id === selectedMarkerId) || filteredMarkers[0] || null;
+
   return (
-    <div className="relative w-full rounded-3xl glass-panel-elevated overflow-hidden border border-slate-700/80 shadow-2xl flex flex-col xl:flex-row h-[740px]">
+    <div className="relative w-full rounded-2xl bg-white overflow-hidden border border-slate-200/90 shadow-xs flex flex-col xl:flex-row h-[740px] text-slate-900">
       {/* Main Map View Area */}
-      <div className="relative flex-1 bg-[#050a12] overflow-hidden flex items-center justify-center select-none">
+      <div className="relative flex-1 bg-slate-100/90 overflow-hidden flex items-center justify-center select-none">
+        {/* Loading Overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 z-30 bg-white/85 flex items-center justify-center">
+            <div className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 shadow-md text-xs font-mono text-slate-800">
+              <Radio className="w-4 h-4 animate-spin text-blue-600" />
+              <span>SYNCING SATELLITE & FIELD TELEMETRY...</span>
+            </div>
+          </div>
+        )}
+
         {/* Real Bangladesh Tactical Map Vector Artwork Background */}
-        <div className="absolute inset-0 opacity-20 pointer-events-none mix-blend-screen">
+        <div className="absolute inset-0 opacity-[0.25] pointer-events-none mix-blend-multiply">
           <Image
             src={ASSETS.mapArtwork}
             alt="Bangladesh Sovereign Geographic Tactical Grid"
             fill
+            sizes="100vw"
             className="object-contain object-center p-4"
             priority
           />
         </div>
 
-        {/* Tactical Coordinate Radar & Grid Overlay */}
+        {/* Coordinate Grid Overlay */}
         <div
-          className="absolute inset-0 pointer-events-none opacity-20"
+          className="absolute inset-0 pointer-events-none opacity-40"
           style={{
-            backgroundImage: `radial-gradient(circle at 50% 50%, rgba(2, 132, 199, 0.2) 0%, transparent 60%), linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px)`,
+            backgroundImage: `radial-gradient(circle at 50% 50%, rgba(37, 99, 235, 0.04) 0%, transparent 60%), linear-gradient(#e2e8f0 1px, transparent 1px), linear-gradient(90deg, #e2e8f0 1px, transparent 1px)`,
             backgroundSize: '100% 100%, 36px 36px, 36px 36px',
           }}
         />
@@ -249,23 +372,23 @@ export default function TacticalMap() {
         <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-1.5 max-w-xl">
           {[
             { id: 'all', label: 'All Incidents (সকল)', icon: Compass },
-            { id: 'flood', label: 'Floods (বন্যা)', icon: Droplets, color: 'text-cyan-400' },
-            { id: 'cyclone', label: 'Cyclones (ঘূর্ণিঝড়)', icon: Wind, color: 'text-amber-400' },
-            { id: 'fire', label: 'Fire Service (ফায়ার)', icon: Flame, color: 'text-orange-400' },
-            { id: 'shelter', label: 'Shelters (আশ্রয়)', icon: Home, color: 'text-emerald-400' },
-            { id: 'hospital', label: 'Hospitals (হাসপাতাল)', icon: HeartHandshake, color: 'text-blue-400' },
-            { id: 'rescue', label: 'Rescue SAR (উদ্ধার)', icon: LifeBuoy, color: 'text-rose-400' },
-            { id: 'environment', label: 'Environment (নদী)', icon: Trees, color: 'text-teal-400' },
+            { id: 'flood', label: 'Floods (বন্যা)', icon: Droplets },
+            { id: 'cyclone', label: 'Cyclones (ঘূর্ণিঝড়)', icon: Wind },
+            { id: 'fire', label: 'Fire Service (ফায়ার)', icon: Flame },
+            { id: 'shelter', label: 'Shelters (আশ্রয়)', icon: Home },
+            { id: 'hospital', label: 'Hospitals (হাসপাতাল)', icon: HeartHandshake },
+            { id: 'rescue', label: 'Rescue SAR (উদ্ধার)', icon: LifeBuoy },
+            { id: 'environment', label: 'Environment (নদী)', icon: Trees },
           ].map((btn) => {
             const isSelected = activeFilter === btn.id;
             return (
               <button
                 key={btn.id}
                 onClick={() => setActiveFilter(btn.id)}
-                className={`py-1.5 px-3 rounded-xl text-[11px] font-bold transition flex items-center space-x-1 border shadow-md ${
+                className={`py-1.5 px-3 rounded-xl text-[11px] font-bold transition flex items-center space-x-1 border shadow-xs ${
                   isSelected
-                    ? 'bg-cyan-950 border-cyan-400 text-cyan-300 shadow-cyan-950/60'
-                    : 'bg-slate-900/90 border-slate-700 text-slate-300 hover:border-slate-500'
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-blue-500/20'
+                    : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
                 <span>{btn.label}</span>
@@ -274,14 +397,20 @@ export default function TacticalMap() {
           })}
         </div>
 
-        {/* Tactical Coordinate Telemetry Badge */}
-        <div className="absolute top-4 right-4 z-20 hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700 text-[11px] font-mono text-cyan-400 shadow-lg">
-          <Compass className="w-3.5 h-3.5 animate-spin" />
-          <span>GRID 23.68N / 90.35E (DHAKA DATUM)</span>
-          <span className="text-slate-500">|</span>
-          <span className="text-emerald-400 flex items-center gap-1">
-            <Radio className="w-3 h-3 animate-pulse" /> BWDB LIVE
-          </span>
+        {/* Telemetry Badge */}
+        <div className="absolute top-4 right-4 z-20 hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[11px] font-mono text-slate-700 shadow-xs">
+          <Compass className="w-3.5 h-3.5 text-blue-600" />
+          <span>GRID 23.68N / 90.35E (DHAKA)</span>
+          <span className="text-slate-300">|</span>
+          {isLiveMode ? (
+            <span className="text-emerald-700 font-bold flex items-center gap-1">
+              <Radio className="w-3 h-3 animate-pulse text-emerald-600" /> LIVE GRID ({filteredMarkers.length} ACTIVE)
+            </span>
+          ) : (
+            <span className="text-amber-700 font-bold flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3 text-amber-600" /> DEMO SIMULATION
+            </span>
+          )}
         </div>
 
         {/* Animated Pins Overlay */}
@@ -295,34 +424,34 @@ export default function TacticalMap() {
               <div
                 key={marker.id}
                 style={{ left: `${x}%`, top: `${y}%` }}
-                onClick={() => setSelectedMarker(marker)}
+                onClick={() => setSelectedMarkerId(marker.id)}
                 className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer group"
               >
                 <div className="relative flex items-center justify-center">
                   {/* Pulse rings for critical / selected pins */}
                   {(isCritical || isSelected) && (
-                    <span className="absolute w-10 h-10 rounded-full bg-red-500/40 animate-ping pointer-events-none" />
+                    <span className="absolute w-10 h-10 rounded-full bg-red-500/20 animate-ping pointer-events-none" />
                   )}
 
                   <div
-                    className={`w-8 h-8 rounded-2xl flex items-center justify-center shadow-xl border-2 transition-transform duration-200 group-hover:scale-125 ${
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-md border-2 transition-transform duration-200 group-hover:scale-125 ${
                       isSelected
-                        ? 'scale-125 ring-2 ring-cyan-400 border-white'
-                        : ''
+                        ? 'scale-125 ring-2 ring-blue-600 border-white'
+                        : 'border-white'
                     } ${
                       marker.type === 'flood'
-                        ? 'bg-blue-600 border-white text-white'
+                        ? 'bg-red-600 text-white'
                         : marker.type === 'cyclone'
-                        ? 'bg-amber-600 border-white text-white'
+                        ? 'bg-amber-600 text-white'
                         : marker.type === 'fire'
-                        ? 'bg-orange-600 border-white text-white'
+                        ? 'bg-orange-600 text-white'
                         : marker.type === 'shelter'
-                        ? 'bg-emerald-600 border-white text-white'
+                        ? 'bg-emerald-600 text-white'
                         : marker.type === 'hospital'
-                        ? 'bg-red-700 border-white text-white'
+                        ? 'bg-rose-600 text-white'
                         : marker.type === 'rescue'
-                        ? 'bg-rose-600 border-white text-white'
-                        : 'bg-teal-600 border-white text-white'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-teal-600 text-white'
                     }`}
                   >
                     {marker.type === 'flood' && <Droplets className="w-4 h-4" />}
@@ -335,32 +464,62 @@ export default function TacticalMap() {
                   </div>
 
                   {/* Marker Tooltip label */}
-                  <div className="absolute bottom-full mb-1.5 hidden group-hover:flex flex-col items-center whitespace-nowrap bg-slate-950/95 border border-slate-700 px-2.5 py-1 rounded-xl text-[10px] text-white font-mono shadow-2xl z-30 pointer-events-none">
+                  <div className="absolute bottom-full mb-1.5 hidden group-hover:flex flex-col items-center whitespace-nowrap bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg text-[10px] text-white font-mono shadow-md z-30 pointer-events-none">
                     <span className="font-bold">{marker.district}</span>
-                    <span className="text-cyan-400 text-[9px]">{marker.status}</span>
+                    <span className="text-blue-300 font-semibold text-[9px]">{marker.status}</span>
                   </div>
                 </div>
               </div>
             );
           })}
+
+          {filteredMarkers.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center p-6 text-center pointer-events-none">
+              <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-md max-w-sm pointer-events-auto">
+                <Compass className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                <h4 className="text-sm font-bold text-slate-900">
+                  {isLiveMode ? 'No Live Incidents in View' : 'No Markers Available'}
+                </h4>
+                <p className="text-xs text-slate-500 mt-1">
+                  {isLiveMode
+                    ? 'No active records match the current filter in the tactical grid.'
+                    : 'Try selecting a different filter above.'}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Right-Hand Inspection Drawer */}
-      <div className="w-full xl:w-96 border-t xl:border-t-0 xl:border-l border-slate-800 bg-[#070e1a]/95 flex flex-col justify-between p-6 overflow-y-auto">
+      <div className="w-full xl:w-96 border-t xl:border-t-0 xl:border-l border-slate-200 bg-white flex flex-col justify-between p-6 overflow-y-auto text-slate-900">
+        {!isLiveMode ? (
+          <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center space-x-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <div>
+              <span className="font-bold block">Development Demo Telemetry</span>
+              <span className="text-[11px] text-amber-700">Displaying offline sample markers for testing.</span>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-4 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center space-x-2 font-mono">
+            <Radio className="w-4 h-4 text-emerald-600 shrink-0 animate-pulse" />
+            <span className="font-bold">VERIFIED LIVE STREAM</span>
+          </div>
+        )}
         {selectedMarker ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-cyan-400 font-bold uppercase">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold uppercase">
                 {selectedMarker.id} • {selectedMarker.type.toUpperCase()}
               </span>
               <span
-                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${
                   selectedMarker.severity === 'CRITICAL'
-                    ? 'bg-red-950 text-red-400 border-red-800 animate-pulse'
+                    ? 'bg-red-50 text-red-700 border-red-200'
                     : selectedMarker.severity === 'HIGH'
-                    ? 'bg-orange-950 text-orange-400 border-orange-800'
-                    : 'bg-emerald-950 text-emerald-400 border-emerald-800'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 }`}
               >
                 {selectedMarker.severity || 'ACTIVE'}
@@ -368,51 +527,53 @@ export default function TacticalMap() {
             </div>
 
             {/* Photo from assets */}
-            <div className="relative h-44 w-full rounded-2xl overflow-hidden border border-slate-800 shadow-lg">
+            <div className="relative h-44 w-full rounded-2xl overflow-hidden border border-slate-200 shadow-xs bg-slate-100">
               <Image
                 src={selectedMarker.image}
                 alt={selectedMarker.title}
                 fill
+                sizes="(max-width: 768px) 100vw, 400px"
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
-              <div className="absolute bottom-2.5 left-3 right-3 text-xs text-white font-bold truncate">
-                {selectedMarker.district}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-2.5 left-2.5 right-2.5 px-2.5 py-1 rounded-lg bg-white/95 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center justify-between shadow-2xs">
+                <span className="truncate">{selectedMarker.district}</span>
+                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shrink-0" />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="text-base font-bold text-white leading-snug">{selectedMarker.title}</h3>
-              <span className="text-xs font-bangla text-emerald-400 font-semibold block">
+              <h3 className="text-base font-bold text-slate-900 leading-snug">{selectedMarker.title}</h3>
+              <span className="text-xs font-bangla text-teal-700 font-bold block">
                 {selectedMarker.banglaTitle}
               </span>
-              <p className="text-xs text-slate-300 leading-relaxed pt-1">{selectedMarker.details}</p>
+              <p className="text-xs text-slate-600 leading-relaxed pt-1">{selectedMarker.details}</p>
             </div>
 
             {selectedMarker.metric && (
-              <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
-                <span className="text-slate-400 block text-[10px] font-mono">LIVE TELEMETRY READOUT</span>
-                <span className="text-white font-bold font-mono text-xs">{selectedMarker.metric}</span>
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                <span className="text-slate-500 block text-[10px] font-mono font-bold uppercase tracking-wider">LIVE TELEMETRY READOUT</span>
+                <span className="text-slate-900 font-extrabold font-mono text-xs">{selectedMarker.metric}</span>
               </div>
             )}
 
             {selectedMarker.contact && (
-              <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs flex justify-between items-center">
-                <span className="text-slate-400 text-[11px]">Emergency Hotline:</span>
-                <span className="text-emerald-400 font-bold font-mono">{selectedMarker.contact}</span>
+              <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs flex justify-between items-center">
+                <span className="text-slate-700 text-[11px] font-medium">Emergency Hotline:</span>
+                <span className="text-red-700 font-bold font-mono">{selectedMarker.contact}</span>
               </div>
             )}
 
             <div className="pt-2 flex flex-col gap-2">
               <Link
                 href="/sos"
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold text-xs uppercase tracking-wider text-center transition shadow-lg shadow-red-950"
+                className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider text-center transition shadow-xs"
               >
                 Dispatch SAR Unit to this Grid
               </Link>
               <Link
                 href="/dashboard/citizen"
-                className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs text-center font-semibold transition"
+                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs text-center font-bold transition shadow-xs"
               >
                 View Nearby Shelter Route
               </Link>

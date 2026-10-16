@@ -1,5 +1,6 @@
 import React from 'react';
 import { LucideIcon } from 'lucide-react';
+import AnimatedCounter from '@/components/ui/animated-counter';
 
 interface StatCardProps {
   title: string;
@@ -20,34 +21,34 @@ export default function StatCard({
 }: StatCardProps) {
   const variantStyles = {
     danger: {
-      border: 'border-red-500/30 hover:border-red-500/50',
-      iconBg: 'bg-red-500/10 text-red-400',
-      glow: 'shadow-red-500/5',
-      valueColor: 'text-red-400',
+      border: 'border-slate-200/90 hover:border-red-300',
+      iconBg: 'bg-red-50 text-red-600 border border-red-100',
+      valueColor: 'text-slate-900',
+      trendBg: 'bg-red-50 text-red-700 border-red-200',
     },
     warning: {
-      border: 'border-amber-500/30 hover:border-amber-500/50',
-      iconBg: 'bg-amber-500/10 text-amber-400',
-      glow: 'shadow-amber-500/5',
-      valueColor: 'text-amber-400',
+      border: 'border-slate-200/90 hover:border-amber-300',
+      iconBg: 'bg-amber-50 text-amber-600 border border-amber-100',
+      valueColor: 'text-slate-900',
+      trendBg: 'bg-amber-50 text-amber-700 border-amber-200',
     },
     success: {
-      border: 'border-emerald-500/30 hover:border-emerald-500/50',
-      iconBg: 'bg-emerald-500/10 text-emerald-400',
-      glow: 'shadow-emerald-500/5',
-      valueColor: 'text-emerald-400',
+      border: 'border-slate-200/90 hover:border-emerald-300',
+      iconBg: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
+      valueColor: 'text-slate-900',
+      trendBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     },
     info: {
-      border: 'border-cyan-500/30 hover:border-cyan-500/50',
-      iconBg: 'bg-cyan-500/10 text-cyan-400',
-      glow: 'shadow-cyan-500/5',
-      valueColor: 'text-cyan-400',
+      border: 'border-slate-200/90 hover:border-blue-300',
+      iconBg: 'bg-blue-50 text-blue-600 border border-blue-100',
+      valueColor: 'text-slate-900',
+      trendBg: 'bg-blue-50 text-blue-700 border-blue-200',
     },
     default: {
-      border: 'border-slate-800 hover:border-slate-700',
-      iconBg: 'bg-slate-800 text-slate-300',
-      glow: 'shadow-slate-500/5',
-      valueColor: 'text-white',
+      border: 'border-slate-200/90 hover:border-teal-300',
+      iconBg: 'bg-teal-50 text-teal-600 border border-teal-100',
+      valueColor: 'text-slate-900',
+      trendBg: 'bg-slate-100 text-slate-700 border-slate-200',
     },
   };
 
@@ -55,19 +56,29 @@ export default function StatCard({
 
   return (
     <div
-      className={`glass-panel p-5 rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 shadow-xl ${style.border} ${style.glow}`}
+      className={`p-5 rounded-2xl bg-white border shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${style.border}`}
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</span>
+        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono">{title}</span>
         <div className={`p-2.5 rounded-xl ${style.iconBg}`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
-      <div className="mt-4 flex items-baseline justify-between">
-        <span className={`text-2xl sm:text-3xl font-black tracking-tight ${style.valueColor}`}>{value}</span>
-        {trend && <span className="text-[11px] font-mono text-slate-400">{trend}</span>}
+      <div className="mt-3">
+        <div className={`text-2xl sm:text-3xl font-extrabold font-mono tracking-tight ${style.valueColor}`}>
+          <AnimatedCounter value={value} />
+        </div>
+        {(subtitle || trend) && (
+          <div className="flex items-center justify-between mt-2 text-xs text-slate-500">
+            {subtitle && <span className="truncate">{subtitle}</span>}
+            {trend && (
+              <span className={`font-semibold px-2 py-0.5 rounded-full border font-mono text-[10px] shrink-0 ${style.trendBg}`}>
+                {trend}
+              </span>
+            )}
+          </div>
+        )}
       </div>
-      {subtitle && <p className="mt-1 text-xs text-slate-400 truncate">{subtitle}</p>}
     </div>
   );
 }

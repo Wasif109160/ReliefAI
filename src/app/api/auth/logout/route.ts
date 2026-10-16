@@ -13,15 +13,15 @@ export async function POST() {
     if (accessToken) {
       const payload = await verifyAccessToken(accessToken);
       if (payload?.sessionId) {
-        authDb.deleteSession(payload.sessionId);
+        await authDb.deleteSession(payload.sessionId);
       }
     } else if (refreshToken) {
       const payload = await verifyRefreshToken(refreshToken);
       if (payload?.sessionId) {
-        authDb.deleteSession(payload.sessionId);
+        await authDb.deleteSession(payload.sessionId);
       }
       if (payload?.familyId) {
-        authDb.revokeTokenFamily(payload.familyId);
+        await authDb.revokeTokenFamily(payload.familyId);
       }
     }
 

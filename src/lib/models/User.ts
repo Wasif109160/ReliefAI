@@ -12,6 +12,7 @@ export interface IUserDocument extends Document {
   avatarUrl?: string;
   organization?: string;
   badgeNumber?: string;
+  assignedTeamId?: string;
   phone?: string;
   assignedZone?: string;
   skills?: string[];
@@ -20,6 +21,9 @@ export interface IUserDocument extends Document {
     lat: number;
     lng: number;
   };
+  failedLoginAttempts?: number;
+  lockoutUntil?: string;
+  status?: 'active' | 'pending_approval' | 'suspended';
   createdAt: string;
   updatedAt?: string;
 }
@@ -33,7 +37,7 @@ const UserSchema = new Schema<IUserDocument>(
     passwordHash: { type: String },
     role: {
       type: String,
-      enum: ['citizen', 'rescue_team', 'ngo', 'government', 'admin', 'volunteer'],
+      enum: ['citizen', 'rescue_team', 'ngo', 'government', 'admin', 'volunteer', 'commander', 'responder'],
       default: 'citizen',
       index: true,
     },
@@ -41,6 +45,7 @@ const UserSchema = new Schema<IUserDocument>(
     avatarUrl: { type: String },
     organization: { type: String },
     badgeNumber: { type: String },
+    assignedTeamId: { type: String, index: true },
     phone: { type: String },
     assignedZone: { type: String },
     skills: [{ type: String }],
@@ -48,6 +53,13 @@ const UserSchema = new Schema<IUserDocument>(
       name: { type: String },
       lat: { type: Number },
       lng: { type: Number },
+    },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockoutUntil: { type: String },
+    status: {
+      type: String,
+      enum: ['active', 'pending_approval', 'suspended'],
+      default: 'active',
     },
     createdAt: { type: String, default: () => new Date().toISOString() },
     updatedAt: { type: String },

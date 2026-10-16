@@ -10,7 +10,6 @@ import {
   CloudRain,
   RefreshCw,
   CheckCircle2,
-  Waves,
 } from 'lucide-react';
 import { DisasterIncident, SOSRequest, Shelter, ResponderTeam } from '@/lib/types';
 import { useNotifications } from '@/context/NotificationContext';
@@ -77,25 +76,25 @@ export default function MapPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 text-slate-900">
       {/* Toast Alert */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-emerald-950 border border-emerald-500/50 text-white shadow-2xl flex items-center space-x-3 animate-in fade-in slide-in-from-bottom-5">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-          <span className="text-xs font-semibold">{toastMsg}</span>
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-white border border-emerald-500 text-slate-900 shadow-xl flex items-center space-x-3 animate-in fade-in slide-in-from-bottom-5">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <span className="text-xs font-bold">{toastMsg}</span>
         </div>
       )}
 
       {/* Page Title & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-2 text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">
-            <Compass className="w-4 h-4 animate-spin-slow" />
+          <div className="flex items-center space-x-2 text-xs font-mono text-blue-700 font-bold uppercase tracking-wider">
+            <Compass className="w-4 h-4 text-blue-600" />
             <span>SOVEREIGN BANGLADESH GEOSPATIAL INTELLIGENCE // BWDB TELEMETRY</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight mt-1">
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mt-1">
             Bangladesh Tactical Crisis Map
-            <span className="block text-emerald-400 font-bangla text-lg sm:text-xl font-bold mt-0.5">
+            <span className="block text-teal-700 font-bangla text-lg sm:text-xl font-bold mt-0.5">
               বাংলাদেশ জাতীয় দুর্যোগ মানচিত্র ও উদ্ধার পর্যবেক্ষণ
             </span>
           </h1>
@@ -104,56 +103,56 @@ export default function MapPage() {
         <button
           onClick={fetchData}
           disabled={loading}
-          className="self-start sm:self-auto flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300 transition"
+          className="self-start sm:self-auto flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-xs font-mono font-bold text-slate-700 transition shadow-xs"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-600' : 'text-slate-400'}`} />
           <span>Refresh Telemetry Stream</span>
         </button>
       </div>
 
       {/* Environmental & Hazard Sensor Telemetry Bar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="p-3.5 rounded-xl glass-panel border border-slate-800 flex items-center space-x-3">
-          <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400">
+        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center space-x-3">
+          <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
             <Droplets className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[10px] text-slate-400 uppercase font-mono">Surma River Gage</div>
-            <div className="text-sm font-bold text-white font-mono">
-              14.22 m <span className="text-[10px] text-red-400 font-mono">(CRITICAL +1.15m)</span>
+            <div className="text-[10px] text-slate-500 uppercase font-mono font-bold">Surma River Gage</div>
+            <div className="text-sm font-extrabold text-slate-900 font-mono">
+              14.22 m <span className="text-[10px] text-red-600 font-mono font-bold">(+1.15m)</span>
             </div>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl glass-panel border border-slate-800 flex items-center space-x-3">
-          <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400">
+        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center space-x-3">
+          <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
             <Wind className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[10px] text-slate-400 uppercase font-mono">Bay of Bengal Wind</div>
-            <div className="text-sm font-bold text-white font-mono">
-              82 km/h <span className="text-[10px] text-amber-400 font-mono">(Signal 4)</span>
+            <div className="text-[10px] text-slate-500 uppercase font-mono font-bold">Bay of Bengal Wind</div>
+            <div className="text-sm font-extrabold text-slate-900 font-mono">
+              82 km/h <span className="text-[10px] text-amber-600 font-mono font-bold">(Signal 4)</span>
             </div>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl glass-panel border border-slate-800 flex items-center space-x-3">
-          <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400">
+        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center space-x-3">
+          <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
             <CloudRain className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[10px] text-slate-400 uppercase font-mono">Meghalaya Runoff Rain</div>
-            <div className="text-sm font-bold text-white font-mono">148 mm / 24h</div>
+            <div className="text-[10px] text-slate-500 uppercase font-mono font-bold">Meghalaya Runoff Rain</div>
+            <div className="text-sm font-extrabold text-slate-900 font-mono">148 mm / 24h</div>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl glass-panel border border-slate-800 flex items-center space-x-3">
-          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center space-x-3">
+          <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
             <Radio className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[10px] text-slate-400 uppercase font-mono">Mesh Latency</div>
-            <div className="text-sm font-bold text-emerald-400 font-mono">12 ms (99.99%)</div>
+            <div className="text-[10px] text-slate-500 uppercase font-mono font-bold">Mesh Latency</div>
+            <div className="text-sm font-extrabold text-emerald-700 font-mono">12 ms (99.99%)</div>
           </div>
         </div>
       </div>
@@ -165,6 +164,7 @@ export default function MapPage() {
         shelters={shelters}
         responders={responders}
         onDispatchSOS={handleDispatchSOS}
+        isLoading={loading}
       />
     </div>
   );

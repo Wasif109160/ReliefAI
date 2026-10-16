@@ -1,55 +1,129 @@
 @import "tailwindcss";
 
 :root {
-  --background: #060b13;
-  --foreground: #f1f5f9;
-  --primary-blue: #0284c7;
-  --primary-blue-dark: #075985;
-  --secondary-green: #059669;
-  --accent-orange: #ea580c;
-  --danger-red: #dc2626;
-  --neutral-surface: #0b1524;
-  --neutral-border: rgba(255, 255, 255, 0.08);
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --surface-subtle: #f1f5f9;
+  --primary-blue: #2563eb;
+  --primary-blue-hover: #1d4ed8;
+  --secondary-teal: #0d9488;
+  --secondary-teal-hover: #0f766e;
+  --emergency-red: #dc2626;
+  --warning-amber: #f59e0b;
+  --success-emerald: #10b981;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-clean: #e2e8f0;
+  --border-subtle: #f1f5f9;
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: #f8fafc;
+  color: #0f172a;
   font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow-x: hidden;
+  background-image:
+    radial-gradient(at 10% 10%, rgba(37, 99, 235, 0.03) 0px, transparent 40%),
+    radial-gradient(at 90% 15%, rgba(13, 148, 136, 0.03) 0px, transparent 40%),
+    radial-gradient(at 50% 90%, rgba(37, 99, 235, 0.02) 0px, transparent 50%);
+  background-size: 100% 100%;
+  background-attachment: fixed;
 }
 
 .font-bangla {
   font-family: var(--font-bangla), 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
 }
 
-/* Glassmorphism System */
+/* Accessible focus outline */
+:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+/* Bright Solid Card System */
+.relief-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.relief-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -2px rgba(15, 23, 42, 0.04);
+}
+
+.relief-card-elevated {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+}
+
+/* Compatibility classes mapping to clean solid surfaces */
 .glass-panel {
-  background: rgba(11, 21, 36, 0.75);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
 }
 
 .glass-panel-elevated {
-  background: rgba(14, 27, 48, 0.88);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.06);
+}
+
+.glass-panel-danger {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 1rem;
+}
+
+.glass-panel-warning {
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 1rem;
+}
+
+.glass-panel-success {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 1rem;
 }
 
 .glass-card-hover {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-card-hover:hover {
-  transform: translateY(-3px);
-  border-color: rgba(56, 189, 248, 0.4);
-  box-shadow: 0 15px 30px -10px rgba(2, 132, 199, 0.25);
+  transform: translateY(-2px);
+  border-color: #93c5fd;
+  box-shadow: 0 8px 20px -4px rgba(37, 99, 235, 0.1);
 }
 
-/* Tactical Pulse and Grid Animations */
+.glass-card-hover-red:hover {
+  transform: translateY(-2px);
+  border-color: #fca5a5;
+  box-shadow: 0 8px 20px -4px rgba(220, 38, 38, 0.1);
+}
+
+.glass-card-hover-amber:hover {
+  transform: translateY(-2px);
+  border-color: #fcd34d;
+  box-shadow: 0 8px 20px -4px rgba(245, 158, 11, 0.1);
+}
+
+.glass-card-hover-emerald:hover {
+  transform: translateY(-2px);
+  border-color: #6ee7b7;
+  box-shadow: 0 8px 20px -4px rgba(16, 185, 129, 0.1);
+}
+
+/* Animations */
 @keyframes radarSweep {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -61,8 +135,33 @@ body {
   100% { background-position: 0% 50%; }
 }
 
+@keyframes floatGentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+@keyframes beaconPulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.08); opacity: 0.4; }
+  100% { transform: scale(1); opacity: 0.9; }
+}
+
+@keyframes shineSweep {
+  0% {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
 .animate-radar {
-  animation: radarSweep 4s linear infinite;
+  animation: radarSweep 5s linear infinite;
 }
 
 .animate-river-flow {
@@ -70,19 +169,79 @@ body {
   animation: riverFlow 8s ease infinite;
 }
 
-/* Custom Scrollbar */
+.animate-float {
+  animation: floatGentle 4s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+.animate-beacon {
+  animation: beaconPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Tasteful Button & Card Shine Sweep */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  pointer-events: none;
+}
+
+.btn-shine:hover::after {
+  animation: shineSweep 0.85s ease-out;
+}
+
+/* Respect user's motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Hide Next.js development indicator badge if injected in DOM */
+[data-nextjs-dev-tools-indicator],
+#next-logo-badge,
+nextjs-portal,
+div[data-nextjs-toast] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Clean Modern Scrollbar */
 ::-webkit-scrollbar {
   width: 7px;
   height: 7px;
 }
 ::-webkit-scrollbar-track {
-  background: #060b13;
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #cbd5e1;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #f1f5f9;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #94a3b8;
 }

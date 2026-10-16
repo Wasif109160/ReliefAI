@@ -2,46 +2,42 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
-  ShieldAlert,
   MapPin,
   Home,
-  Users,
-  Activity,
-  HeartHandshake,
   Truck,
   LifeBuoy,
   ChevronDown,
-  UserCheck,
   Menu,
   X,
   Flame,
   Building2,
-  Lock,
+  Activity,
   User,
   Settings,
   LogOut,
-  Sparkles,
   Bot,
-  Trees,
+  Waves,
+  HeartHandshake,
+  AlertOctagon,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { UserRole } from '@/lib/types';
 import NotificationBell from './notifications/NotificationBell';
+
+interface NavLinkItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+}
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, role, switchRole, logout, isAuthenticated } = useAuth();
+  const { user, role, logout, isAuthenticated } = useAuth();
   const [isRoleOpen, setIsRoleOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  interface NavLinkItem {
-    href: string;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-    badge?: string;
-  }
 
   // Dynamic role dashboard target
   const getRoleDashboard = (userRole: string): NavLinkItem => {
@@ -64,70 +60,82 @@ export default function Navbar() {
 
   const currentDashboard = getRoleDashboard(role);
 
-  // Nav links: Dynamically shows the user's authorized role dashboard and common public pages
+  // All 7 primary navigation links + dynamic role dashboard
   const navLinks: NavLinkItem[] = [
-    { href: '/map', label: 'Live Map', icon: MapPin },
-    { href: '/environment', label: 'Environment', icon: Trees, badge: 'Eco' },
-    { href: '/shelters', label: 'Shelter Finder', icon: Home },
-    { href: '/ai-copilot', label: 'AI Copilot', icon: Bot, badge: 'Gemini' },
-    ...(isAuthenticated ? [currentDashboard] : []),
-    { href: '/distribution', label: 'Relief Tracking', icon: Truck },
+    { href: '/map', label: 'Tactical Map', icon: MapPin },
+    { href: '/shelters', label: 'Shelters', icon: Home },
+    { href: '/environment', label: 'River Watch', icon: Waves },
+    { href: '/ai-copilot', label: 'AI Copilot', icon: Bot, badge: 'AI' },
+    {
+      href: isAuthenticated ? currentDashboard.href : '/dashboard/citizen',
+      label: isAuthenticated ? currentDashboard.label : 'Citizen Safety',
+      icon: isAuthenticated ? currentDashboard.icon : LifeBuoy,
+    },
+    { href: '/distribution', label: 'Relief Mesh', icon: Truck },
     { href: '/donations', label: 'Donations', icon: HeartHandshake },
-  ];
-
-  const rolesList: { role: UserRole; title: string; desc: string }[] = [
-    { role: 'citizen', title: 'Citizen', desc: 'SOS Broadcast & Safe Shelters' },
-    { role: 'rescue_team', title: 'Rescue Team', desc: 'Tactical SAR & Mission Check-in' },
-    { role: 'ngo', title: 'NGO Logistics', desc: 'Depot Stock & Relief Convoys' },
-    { role: 'government', title: 'Government', desc: 'Civil Defense & CAP Cell Alerts' },
-    { role: 'admin', title: 'Incident Commander', desc: 'Full ICS-400 Operations & RBAC' },
   ];
 
   const userName = user?.displayName || user?.name || (isAuthenticated ? 'Personnel' : 'Guest');
 
   return (
-    <nav className="glass-panel border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md">
+    <nav
+      aria-label="Main Navigation"
+      className="bg-white border-b border-slate-200/90 sticky top-0 z-40 shadow-xs text-slate-800"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center space-x-3">
-            <Link href="/" className="flex items-center space-x-2.5 group">
-              <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-600 to-amber-600 p-0.5 shadow-lg shadow-red-950/40 group-hover:scale-105 transition-transform">
-                <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                  <ShieldAlert className="w-5 h-5 text-red-500 group-hover:text-red-400 transition" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
+          {/* Logo with AgroVenture / Relief AI Official Shield Logo */}
+          <div className="flex items-center space-x-3 shrink-0">
+            <Link
+              href="/"
+              className="flex items-center space-x-2.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-xl"
+              aria-label="Relief AI Bangladesh Homepage"
+            >
+              <div className="relative w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 p-1 flex items-center justify-center shadow-xs group-hover:border-blue-400 group-hover:bg-blue-100 transition-all">
+                <Image
+                  src="/favicon-logo.png"
+                  alt="Relief AI National Shield Emblem"
+                  width={32}
+                  height={32}
+                  priority
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
-                <span className="text-xl font-black tracking-tight text-white flex items-center gap-1">
-                  Relief<span className="text-red-500">AI</span>
-                </span>
-                <span className="hidden sm:block text-[9px] font-mono tracking-widest text-slate-400 uppercase -mt-1">
-                  Autonomous Crisis OS
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-lg font-black tracking-tight text-slate-900 leading-none">
+                    Relief<span className="text-blue-600">AI</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                    BD
+                  </span>
+                </div>
+                <span className="hidden sm:block text-[9px] font-bangla text-teal-700 font-bold tracking-wide">
+                  জাতীয় দুর্যোগ ও উদ্ধার প্ল্যাটফর্ম
                 </span>
               </div>
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-1">
+          {/* Desktop Navigation Links */}
+          <div className="hidden xl:flex items-center space-x-1">
             {navLinks.map((link) => {
               const Icon = link.icon;
-              const isActive = pathname === link.href;
+              const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
                     isActive
-                      ? 'bg-slate-800 text-cyan-400 border border-cyan-500/30 shadow-sm shadow-cyan-500/10'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                      ? 'bg-blue-50 text-blue-700 font-bold border border-blue-100'
+                      : 'text-slate-600 hover:text-blue-600 hover:bg-slate-50'
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
                   <span>{link.label}</span>
                   {link.badge && (
-                    <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-gradient-to-r from-cyan-600 to-blue-600 text-white">
+                    <span className="text-[9px] font-mono font-bold px-1 py-0.2 rounded bg-blue-100 text-blue-700 border border-blue-200">
                       {link.badge}
                     </span>
                   )}
@@ -138,16 +146,14 @@ export default function Navbar() {
 
           {/* Right Action Bar */}
           <div className="flex items-center space-x-2.5">
-            {/* SOS Dispatch Button */}
+            {/* SOS Dispatch Action Button */}
             <Link
               href="/sos"
-              className="relative group overflow-hidden rounded-xl p-px font-semibold text-xs transition active:scale-95 shadow-md shadow-red-950"
+              id="navbar-sos-button"
+              className="flex items-center space-x-1.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white px-3.5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-xs focus-visible:ring-2 focus-visible:ring-red-500"
             >
-              <span className="absolute inset-0 bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 animate-pulse" />
-              <span className="relative flex items-center space-x-1.5 bg-red-700 hover:bg-red-600 px-3.5 py-2 rounded-[11px] text-white transition">
-                <LifeBuoy className="w-4 h-4" />
-                <span className="font-black tracking-wide uppercase text-[11px]">SOS REPORT</span>
-              </span>
+              <AlertOctagon className="w-4 h-4 text-white animate-pulse" aria-hidden="true" />
+              <span>SOS REPORT</span>
             </Link>
 
             {/* Notification Bell */}
@@ -159,43 +165,44 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={() => setIsRoleOpen(!isRoleOpen)}
-                  className="flex items-center space-x-2 bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium transition"
+                  aria-expanded={isRoleOpen}
+                  aria-label="User profile and role menu"
+                  className="flex items-center space-x-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl text-xs font-medium transition shadow-xs"
                 >
-                  <div className="w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-bold text-[10px]">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-bold text-[10px]">
                     {role.slice(0, 2).toUpperCase()}
                   </div>
-                  <div className="text-left hidden md:block">
-                    <div className="text-[11px] font-semibold leading-tight text-white truncate max-w-[100px]">
+                  <div className="text-left hidden lg:block">
+                    <div className="text-[11px] font-bold leading-tight text-slate-900 truncate max-w-[90px]">
                       {userName.split(' ')[0]}
                     </div>
-                    <div className="text-[9px] font-mono text-cyan-400 uppercase">{role}</div>
+                    <div className="text-[9px] font-mono text-blue-600 uppercase font-semibold">{role}</div>
                   </div>
-                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </button>
 
                 {/* Dropdown Menu */}
                 {isRoleOpen && (
-                  <div className="absolute right-0 mt-2 w-72 rounded-2xl glass-panel-elevated p-2 shadow-2xl z-50 border border-slate-700 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="px-3 py-2 border-b border-slate-800 mb-2">
-                      <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-semibold">Active Session</p>
-                      <p className="text-xs text-white font-bold">{userName}</p>
-                      <p className="text-[10px] text-cyan-400 truncate">{user?.organization || 'General Public'}</p>
+                  <div className="absolute right-0 mt-2 w-72 rounded-2xl p-2.5 shadow-xl z-50 border border-slate-200 bg-white text-slate-900 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-2 border-b border-slate-100 mb-2">
+                      <p className="text-[10px] font-mono text-blue-600 uppercase tracking-wider font-semibold">Active Session</p>
+                      <p className="text-xs text-slate-900 font-bold">{userName}</p>
+                      <p className="text-[10px] text-teal-700 font-medium truncate">{user?.organization || 'Registered Personnel'}</p>
                     </div>
 
-                    {/* Links to Profile and Settings */}
-                    <div className="space-y-1 pb-2 border-b border-slate-800 mb-2">
+                    <div className="space-y-1 pb-2 border-b border-slate-100 mb-2">
                       <Link
                         href={currentDashboard.href}
                         onClick={() => setIsRoleOpen(false)}
-                        className="flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-800/80 transition"
+                        className="flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-xs text-slate-700 hover:text-blue-700 hover:bg-blue-50 transition"
                       >
-                        <currentDashboard.icon className="w-3.5 h-3.5 text-cyan-400" />
+                        <currentDashboard.icon className="w-3.5 h-3.5 text-blue-600" />
                         <span>My Dashboard ({currentDashboard.label})</span>
                       </Link>
                       <Link
                         href="/profile"
                         onClick={() => setIsRoleOpen(false)}
-                        className="flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-800/80 transition"
+                        className="flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-xs text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition"
                       >
                         <User className="w-3.5 h-3.5 text-slate-400" />
                         <span>Personnel Profile</span>
@@ -203,51 +210,20 @@ export default function Navbar() {
                       <Link
                         href="/settings"
                         onClick={() => setIsRoleOpen(false)}
-                        className="flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-800/80 transition"
+                        className="flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-xs text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition"
                       >
                         <Settings className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Security & Passwords</span>
+                        <span>Account Settings</span>
                       </Link>
                     </div>
 
-                    {/* Switch Demo Persona */}
-                    <p className="text-[9px] font-mono text-slate-400 uppercase px-2.5 mb-1 font-semibold">
-                      Fast RBAC Role Switch (Testing)
-                    </p>
-                    <div className="space-y-0.5 max-h-48 overflow-y-auto">
-                      {rolesList.map((r) => {
-                        const isSelected = r.role === role;
-                        return (
-                          <button
-                            key={r.role}
-                            onClick={() => {
-                              switchRole(r.role);
-                              setIsRoleOpen(false);
-                            }}
-                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left text-xs transition ${
-                              isSelected
-                                ? 'bg-cyan-950/70 text-cyan-300 border border-cyan-500/30'
-                                : 'hover:bg-slate-800/70 text-slate-300'
-                            }`}
-                          >
-                            <div>
-                              <div className="font-bold text-white text-[11px]">{r.title}</div>
-                              <div className="text-[9px] text-slate-400">{r.desc}</div>
-                            </div>
-                            {isSelected && <UserCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Logout */}
-                    <div className="pt-2 border-t border-slate-800 mt-2">
+                    <div className="pt-2 border-t border-slate-100 mt-2">
                       <button
                         onClick={() => {
-                          setIsRoleOpen(false);
                           logout();
+                          setIsRoleOpen(false);
                         }}
-                        className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-xs text-red-400 hover:bg-red-950/50 hover:text-red-300 transition"
+                        className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-xs text-red-600 hover:bg-red-50 font-semibold transition"
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Sign Out of Platform</span>
@@ -260,32 +236,36 @@ export default function Navbar() {
               <div className="flex items-center space-x-2">
                 <Link
                   href="/auth/login"
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white transition"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-50 border border-slate-200 transition"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/auth/register"
-                  className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-xs font-bold text-white transition shadow-md shadow-cyan-950"
+                  className="hidden sm:inline-flex px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition shadow-xs"
                 >
                   Register
                 </Link>
               </div>
             )}
 
-            {/* Mobile Hamburger */}
+            {/* Mobile Menu Toggle Button */}
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white"
+              className="xl:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+              aria-label="Toggle mobile menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Navigation Drawer */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-slate-800 py-3 px-1 space-y-1">
+      {/* Mobile Drawer */}
+      {mobileMenuOpen && (
+        <div className="xl:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-2 shadow-lg">
+          <div className="grid grid-cols-2 gap-2 pb-3 border-b border-slate-100">
             {navLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href;
@@ -294,65 +274,31 @@ export default function Navbar() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center space-x-2.5 px-3 py-2 rounded-xl text-sm font-medium transition ${
-                    isActive ? 'bg-slate-800 text-cyan-400' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
+                  className={`flex items-center space-x-2 p-2.5 rounded-xl text-xs font-semibold ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-700 font-bold border border-blue-100'
+                      : 'text-slate-700 hover:bg-slate-50'
                   }`}
                 >
-                  <Icon className="w-4 h-4 text-cyan-400" />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-slate-500'}`} />
                   <span>{link.label}</span>
                 </Link>
               );
             })}
-            {isAuthenticated ? (
-              <div className="pt-2 border-t border-slate-800 space-y-1">
-                <Link
-                  href="/profile"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center space-x-2.5 px-3 py-2 rounded-xl text-sm text-slate-300 hover:bg-slate-800/60"
-                >
-                  <User className="w-4 h-4 text-slate-400" />
-                  <span>Personnel Profile</span>
-                </Link>
-                <Link
-                  href="/settings"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center space-x-2.5 px-3 py-2 rounded-xl text-sm text-slate-300 hover:bg-slate-800/60"
-                >
-                  <Settings className="w-4 h-4 text-slate-400" />
-                  <span>Security & Settings</span>
-                </Link>
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    logout();
-                  }}
-                  className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-sm text-red-400 hover:bg-red-950/40"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Sign Out</span>
-                </button>
-              </div>
-            ) : (
-              <div className="pt-2 border-t border-slate-800 flex gap-2 px-2">
-                <Link
-                  href="/auth/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 py-2 text-center rounded-xl bg-slate-800 text-white text-xs font-semibold"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/auth/register"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 py-2 text-center rounded-xl bg-cyan-600 text-white text-xs font-bold"
-                >
-                  Register
-                </Link>
-              </div>
-            )}
           </div>
-        )}
-      </div>
+
+          <div className="pt-2 flex flex-col gap-2">
+            <Link
+              href="/sos"
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-red-600 text-white font-bold text-xs uppercase"
+            >
+              <AlertOctagon className="w-4 h-4" />
+              <span>Broadcast Emergency SOS (জরুরি সাহায্য)</span>
+            </Link>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { z } from 'zod';
 import { authDb } from '@/lib/server/auth-db';
+import { emailService } from '@/lib/server/email-service';
+import { securityUtils } from '@/lib/server/security';
 
 const ForgotSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -20,27 +21,39 @@ export async function POST(req: Request) {
     }
 
     const { email } = result.data;
-    const user = authDb.findUserByEmail(email);
+    const cleanEmail = email.toLowerCase().trim();
+
+    // 1. Rate Limiting Check
+    const rateCheck = securityUtils.checkOtpRateLimit(cleanEmail);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: rateCheck.message || 'Please wait before requesting another reset code.' },
+        { status: 429 }
+      );
+    }
+
+    const user = await authDb.findUserByEmail(cleanEmail);
 
     // If user not found, return generic success to prevent email scraping / enumeration
     if (!user) {
       return NextResponse.json({
         success: true,
-        message: 'If an account exists with this email, a password reset link has been dispatched.',
+        message: 'If an account exists with this email address, a 6-digit password reset code has been dispatched.',
       });
     }
 
-    // Generate secure random token
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    authDb.createPasswordResetToken(user.id, rawToken);
+    // 2. Generate 6-digit numeric OTP (10 minutes expiry)
+    const otp = securityUtils.generateNumericOtp();
+    await authDb.createPasswordResetOtp(user.id, user.email, otp, 10);
 
-    const resetUrl = `/auth/reset-password?token=${rawToken}`;
+    // 3. Dispatch Password Reset OTP Email
+    await emailService.sendPasswordResetOtpEmail(user.email, user.name, otp, 10);
 
     return NextResponse.json({
       success: true,
-      message: 'Password reset link generated successfully.',
-      resetUrl,
-      resetToken: rawToken,
+      email: user.email,
+      message: 'A 6-digit password reset code has been dispatched to your email address.',
+      otpPreview: process.env.NODE_ENV !== 'production' ? otp : undefined,
     });
   } catch (error) {
     console.error('Forgot password error:', error);

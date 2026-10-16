@@ -4,23 +4,23 @@ import React, { useState } from 'react';
 import {
   Users,
   CheckCircle2,
-  Clock,
-  Compass,
-  AlertTriangle,
   Award,
   Zap,
   MapPin,
   ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { VolunteerTask, SeverityLevel } from '@/lib/types';
+import { VolunteerTask } from '@/lib/types';
+import { HeroAmbientBeams } from '@/components/ui/hero-ambient-beams';
+import { AnimatedCounter } from '@/components/ui/animated-counter';
+import { FadeIn } from '@/components/ui/motion-wrapper';
 
 const initialTasks: VolunteerTask[] = [
   {
     id: 'tsk-01',
-    title: 'Reinforce Sandbag Berms at Staging Ramp',
-    description: 'River crest expected in 3 hours. Assist engineering squad in laying 200 heavy gravel sandbags along south levee.',
-    zone: 'River Staging Ramp Dock B',
+    title: 'Reinforce Sandbag Berms at Staging Ramp (বালির বাঁধ নির্মাণ)',
+    description: 'সুরমা নদীর পানি বিপৎসীমার ৫০ সেমি উপরে। দক্ষিণ বাঁধে ২০০টি জরুরি বালির বস্তা মজবুতকরণে সহায়তা প্রয়োজন।',
+    zone: 'সুনামগঞ্জ রিভার র‍্যাম্প ডক বি',
     priority: 'high',
     requiredSkill: 'Physical Logistics',
     status: 'open',
@@ -28,21 +28,21 @@ const initialTasks: VolunteerTask[] = [
   },
   {
     id: 'tsk-02',
-    title: 'Distribute Infant Formula & Pediatric Water',
-    description: '3 families with infants evacuated to Lincoln High Gymnasium require specialty pediatric formula and blankets.',
-    zone: 'Lincoln Safe Zone (Annex)',
+    title: 'Distribute Infant Formula & Pediatric Water (শিশু খাদ্য বিতরণ)',
+    description: 'গোয়াইনঘাট উপজেলা পরিষদ আশ্রয়কেন্দ্রে আশ্রিত ৩টি পরিবারের নবজাতক শিশুদের জন্য জরুরি ওরস্যালাইন ও শিশুখাদ্য পৌঁছে দিন।',
+    zone: 'গোয়াইনঘাট ত্রাণ কেন্দ্র, সিলেট',
     priority: 'critical',
     requiredSkill: 'CPR / First Aid',
     assignedVolunteerId: 'demo-volunteer-2',
-    assignedVolunteerName: 'Chloe Dubois',
+    assignedVolunteerName: 'সাকিব আল হাসান',
     status: 'in_progress',
     createdAt: '30m ago',
   },
   {
     id: 'tsk-03',
-    title: 'Spanish-English Crisis Intake Translation',
-    description: 'Elderly non-English speaking family admitted to Cascadia Civic Arena needing medical intake assessment.',
-    zone: 'Cascadia Civic Arena Intake Hall',
+    title: 'Field Medical Translation & Intake Support (চিকিৎসা অনুবাদ)',
+    description: 'সিলেট এমএজি ওসমানী মেডিকেল প্রতিনিধি দলের সাথে স্থানীয় জরুরি স্বাস্থ্য বুথে রোগী নিবন্ধন ও ফার্স্ট এইড ড্রাইভ।',
+    zone: 'কোম্পানীগঞ্জ স্বাস্থ্য কমপ্লেক্স',
     priority: 'moderate',
     requiredSkill: 'Bilingual Translator',
     status: 'open',
@@ -50,13 +50,13 @@ const initialTasks: VolunteerTask[] = [
   },
   {
     id: 'tsk-04',
-    title: 'Wellness Check on Elmira St Block 11',
-    description: 'Confirm 6 residences have evacuated to high ground before nightfall.',
-    zone: 'Fluvial District Sector 4',
+    title: 'Wellness Check on Vulnerable Households (নিরাপত্তা তল্লাশি)',
+    description: 'চিলমারী ঘাটের নদীভাঙন ঝুঁকিতে থাকা ৬টি পরিবারের নিরাপদ আশ্রয়কেন্দ্রে স্থানান্তর নিশ্চিতকরণ।',
+    zone: 'চিলমারী রিভার ঘাট, কুড়িগ্রাম',
     priority: 'moderate',
     requiredSkill: 'General Volunteer',
     assignedVolunteerId: 'demo-volunteer-2',
-    assignedVolunteerName: 'Chloe Dubois',
+    assignedVolunteerName: 'সাকিব আল হাসান',
     status: 'completed',
     createdAt: '2h ago',
   },
@@ -100,76 +100,85 @@ export default function VolunteerDashboard() {
   const inProgressCount = tasks.filter((t) => t.status === 'in_progress').length;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Title Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-        <div>
-          <div className="flex items-center space-x-2 text-xs font-mono text-emerald-400 font-bold uppercase tracking-wider">
-            <Users className="w-4 h-4" />
-            <span>VOLUNTEER MOBILIZATION & FIELD OPERATIONS</span>
+    <FadeIn className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Light Premium Hero Banner */}
+      <div className="relative rounded-3xl overflow-hidden border border-slate-200/90 bg-white p-6 sm:p-8 shadow-xs">
+        <HeroAmbientBeams className="opacity-70" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-xs font-bold text-teal-800 uppercase tracking-wider shadow-2xs">
+              <Users className="w-3.5 h-3.5 text-teal-600" />
+              <span>VOLUNTEER MOBILIZATION & FIELD OPERATIONS // মাঠপর্যায় স্বেচ্ছাসেবা</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              Volunteer Operations Deck
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600">
+              Logged in as <strong className="text-slate-900">{user?.displayName || user?.name || 'Volunteer Worker'}</strong> ({user?.organization || 'National Volunteer Corps'}).
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight mt-1">
-            Volunteer Dashboard
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Logged in as <strong className="text-white">{user?.displayName || user?.name || 'Volunteer Worker'}</strong> ({user?.organization || 'Independent Volunteer'}).
-          </p>
-        </div>
 
-        {/* GPS Check-in Toggle */}
-        <button
-          onClick={() => setCheckInStatus(!checkInStatus)}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition shadow-lg ${
-            checkInStatus
-              ? 'bg-emerald-950 border-emerald-500 text-emerald-300 shadow-emerald-950'
-              : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
-          }`}
-        >
-          <MapPin className={`w-4 h-4 ${checkInStatus ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
-          <span>{checkInStatus ? 'ON-SCENE GPS ACTIVE' : 'CHECK IN ON-SCENE'}</span>
-        </button>
+          {/* GPS Check-in Toggle */}
+          <button
+            onClick={() => setCheckInStatus(!checkInStatus)}
+            className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl border text-xs font-semibold transition shadow-xs cursor-pointer ${
+              checkInStatus
+                ? 'bg-blue-600 border-blue-600 text-white'
+                : 'bg-white border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <MapPin className={`w-4 h-4 ${checkInStatus ? 'text-white animate-pulse' : 'text-slate-400'}`} />
+            <span>{checkInStatus ? 'ON-SCENE GPS ACTIVE' : 'CHECK IN ON-SCENE'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Volunteer Telemetry Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-1">
-          <span className="text-[10px] font-mono text-slate-400 uppercase">MISSIONS COMPLETED</span>
-          <div className="text-2xl font-black text-emerald-400">{completedCount} Missions</div>
-          <p className="text-[11px] text-slate-500">Verified by Incident Command</p>
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 space-y-1 shadow-xs hover:shadow-md transition">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">MISSIONS COMPLETED</span>
+          <div className="text-2xl font-extrabold text-emerald-700 font-mono flex items-baseline gap-1">
+            <AnimatedCounter value={completedCount} />
+            <span className="text-xs font-sans text-slate-500">Missions</span>
+          </div>
+          <p className="text-xs text-slate-500">Verified by Incident Command</p>
         </div>
 
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-1">
-          <span className="text-[10px] font-mono text-slate-400 uppercase">ACTIVE DEPLOYMENTS</span>
-          <div className="text-2xl font-black text-amber-400">{inProgressCount} In Progress</div>
-          <p className="text-[11px] text-slate-500">Sector 4 Fluvial District</p>
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 space-y-1 shadow-xs hover:shadow-md transition">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">ACTIVE DEPLOYMENTS</span>
+          <div className="text-2xl font-extrabold text-amber-600 font-mono flex items-baseline gap-1">
+            <AnimatedCounter value={inProgressCount} />
+            <span className="text-xs font-sans text-amber-700">In Progress</span>
+          </div>
+          <p className="text-xs text-slate-500">Sector 4 Fluvial District</p>
         </div>
 
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-1">
-          <span className="text-[10px] font-mono text-slate-400 uppercase">VOLUNTEER HOURS</span>
-          <div className="text-2xl font-black text-cyan-400 font-mono">18.5 hrs</div>
-          <p className="text-[11px] text-slate-500">Operational Period 02</p>
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 space-y-1 shadow-xs hover:shadow-md transition">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">VOLUNTEER HOURS</span>
+          <div className="text-2xl font-extrabold text-blue-600 font-mono">18.5 hrs</div>
+          <p className="text-xs text-slate-500">Operational Period 02</p>
         </div>
 
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-1">
-          <span className="text-[10px] font-mono text-slate-400 uppercase">BADGE LEVEL</span>
-          <div className="text-2xl font-black text-purple-400 flex items-center space-x-1.5">
-            <Award className="w-5 h-5 text-purple-400" />
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 space-y-1 shadow-xs hover:shadow-md transition">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">BADGE LEVEL</span>
+          <div className="text-2xl font-extrabold text-teal-700 flex items-center space-x-1.5 font-mono">
+            <Award className="w-5 h-5 text-teal-600" />
             <span>Tier II Lead</span>
           </div>
-          <p className="text-[11px] text-slate-500">Certified Swift Water</p>
+          <p className="text-xs text-slate-500">Certified Swift Water</p>
         </div>
       </div>
 
       {/* Mission Board Tabs */}
-      <div className="flex items-center space-x-2 border-b border-slate-800 pb-3">
+      <div className="flex items-center space-x-2 border-b border-slate-200 pb-3">
         {(['all', 'open', 'my'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+            className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
               activeTab === tab
-                ? 'bg-cyan-950 text-cyan-300 border border-cyan-800'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
             {tab === 'all' ? 'All Missions' : tab === 'open' ? 'Open for Claim' : 'My Assigned Missions'}
@@ -186,50 +195,50 @@ export default function VolunteerDashboard() {
           return (
             <div
               key={task.id}
-              className={`glass-panel p-6 rounded-3xl border transition space-y-4 shadow-xl flex flex-col justify-between ${
-                isCritical ? 'border-red-500/40 shadow-red-950/20' : 'border-slate-800 hover:border-slate-700'
+              className={`bg-white p-6 rounded-2xl border transition-all space-y-4 shadow-xs hover:shadow-md flex flex-col justify-between ${
+                isCritical ? 'border-red-200 ring-1 ring-red-100' : 'border-slate-200/90 hover:border-slate-300'
               }`}
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-base font-bold text-white">{task.title}</h3>
+                  <h3 className="text-base font-bold text-slate-900">{task.title}</h3>
                   <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                       task.status === 'completed'
-                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         : task.status === 'in_progress'
-                        ? 'bg-amber-950 text-amber-300 border border-amber-800'
-                        : 'bg-cyan-950 text-cyan-300 border border-cyan-800'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-blue-50 text-blue-700 border-blue-200'
                     }`}
                   >
                     {task.status.replace('_', ' ')}
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-300 leading-relaxed bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200/80">
                   {task.description}
                 </p>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center space-x-1.5 text-slate-400">
-                    <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                    <span className="truncate">{task.zone}</span>
+                  <div className="flex items-center space-x-1.5 text-slate-600">
+                    <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span className="truncate font-medium">{task.zone}</span>
                   </div>
-                  <div className="flex items-center space-x-1.5 text-slate-400">
-                    <ShieldCheck className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                    <span className="truncate">{task.requiredSkill}</span>
+                  <div className="flex items-center space-x-1.5 text-slate-600">
+                    <ShieldCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                    <span className="truncate font-medium">{task.requiredSkill}</span>
                   </div>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
-                <span className="text-[10px] font-mono text-slate-500">Posted {task.createdAt}</span>
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] font-mono text-slate-500">Posted {task.createdAt}</span>
 
                 {task.status === 'open' && (
                   <button
                     onClick={() => handleClaimTask(task.id)}
-                    className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs uppercase tracking-wider transition shadow-md shadow-cyan-950 flex items-center space-x-1"
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs uppercase tracking-wider transition shadow-xs flex items-center space-x-1"
                   >
                     <Zap className="w-3.5 h-3.5" />
                     <span>Claim Mission</span>
@@ -239,7 +248,7 @@ export default function VolunteerDashboard() {
                 {task.status === 'in_progress' && isMyTask && (
                   <button
                     onClick={() => handleCompleteTask(task.id)}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition shadow-md shadow-emerald-950 flex items-center space-x-1"
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs uppercase tracking-wider transition shadow-xs flex items-center space-x-1"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Mark Completed</span>
@@ -247,8 +256,8 @@ export default function VolunteerDashboard() {
                 )}
 
                 {task.status === 'completed' && (
-                  <span className="text-xs text-emerald-400 font-bold flex items-center gap-1 font-mono">
-                    <CheckCircle2 className="w-4 h-4" /> VERIFIED COMPLETE
+                  <span className="text-xs text-emerald-700 font-bold flex items-center gap-1 font-mono">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> VERIFIED COMPLETE
                   </span>
                 )}
               </div>
@@ -256,6 +265,6 @@ export default function VolunteerDashboard() {
           );
         })}
       </div>
-    </div>
+    </FadeIn>
   );
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyAccessToken, verifyRefreshToken } from './lib/server/jwt';
+import { verifyAccessToken, verifyRefreshToken, TokenPayload } from './lib/server/jwt';
 import { COOKIE_ACCESS_TOKEN, COOKIE_REFRESH_TOKEN } from './lib/server/cookies';
 
 const ROLE_DASHBOARDS: Record<string, string> = {
@@ -27,14 +27,19 @@ export async function middleware(request: NextRequest) {
   const accessToken = request.cookies.get(COOKIE_ACCESS_TOKEN)?.value;
   const refreshToken = request.cookies.get(COOKIE_REFRESH_TOKEN)?.value;
 
-  let userPayload = accessToken ? await verifyAccessToken(accessToken) : null;
+  let userPayload: TokenPayload | null = accessToken ? await verifyAccessToken(accessToken) : null;
 
   // If access token is expired/missing, check if refresh token is valid
   if (!userPayload && refreshToken) {
     const refreshPayload = await verifyRefreshToken(refreshToken);
-    if (refreshPayload) {
-      // Refresh token is cryptographically valid
-      // In middleware we mark as authenticated; client AuthContext or API routes will renew the access token
+    if (refreshPayload?.userId) {
+      userPayload = {
+        userId: refreshPayload.userId,
+        email: refreshPayload.email || '',
+        role: refreshPayload.role || 'citizen',
+        name: refreshPayload.name || '',
+        sessionId: refreshPayload.sessionId,
+      };
     }
   }
 

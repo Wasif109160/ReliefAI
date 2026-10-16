@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     if (accessToken) {
       const payload = await verifyAccessToken(accessToken);
       if (payload?.userId) {
-        const user = authDb.findUserById(payload.userId);
+        const user = await authDb.findUserById(payload.userId);
         if (user) {
           return NextResponse.json({ user: authDb.sanitizeUser(user) });
         }
@@ -27,10 +27,10 @@ export async function GET(req: Request) {
       const refreshPayload = await verifyRefreshToken(refreshToken);
       if (refreshPayload?.userId) {
         const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-        const tokenRecord = authDb.findRefreshToken(tokenHash);
+        const tokenRecord = await authDb.findRefreshToken(tokenHash);
 
         if (tokenRecord && !tokenRecord.isRevoked) {
-          const user = authDb.findUserById(tokenRecord.userId);
+          const user = await authDb.findUserById(tokenRecord.userId);
           if (user) {
             // Rotate refresh token
             tokenRecord.isRevoked = true;
@@ -38,12 +38,15 @@ export async function GET(req: Request) {
 
             const newRefreshToken = await signRefreshToken({
               userId: user.id,
+              role: user.role,
+              email: user.email,
+              name: user.name,
               familyId: tokenRecord.familyId,
               sessionId,
             });
 
             const newTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
-            authDb.storeRefreshToken({
+            await authDb.storeRefreshToken({
               userId: user.id,
               tokenHash: newTokenHash,
               familyId: tokenRecord.familyId,
@@ -105,7 +108,7 @@ export async function PATCH(req: Request) {
       skills: body.skills,
     };
 
-    const updatedUser = authDb.updateUser(payload.userId, allowedUpdates);
+    const updatedUser = await authDb.updateUser(payload.userId, allowedUpdates);
     if (!updatedUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }

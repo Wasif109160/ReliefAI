@@ -1,14 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, ArrowRight, ArrowLeft, ShieldCheck, AlertCircle, KeyRound } from 'lucide-react';
+import { Mail, ArrowRight, ArrowLeft, AlertCircle, KeyRound, CheckCircle2, Clock } from 'lucide-react';
+import { HeroAmbientBeams } from '@/components/ui/hero-ambient-beams';
+import { FadeIn } from '@/components/ui/motion-wrapper';
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [resetUrl, setResetUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,91 +31,112 @@ export default function ForgotPasswordPage() {
       if (!res.ok) {
         setError(data.error || 'Failed to request password reset');
       } else {
-        setMessage(data.message || 'If an account exists, a reset link has been dispatched.');
-        if (data.resetUrl) {
-          setResetUrl(data.resetUrl);
-        }
+        setMessage(data.message || 'A 6-digit password reset code has been dispatched.');
+        // Navigate to Reset Password page with email prefilled
+        setTimeout(() => {
+          router.push(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+        }, 1500);
       }
     } catch {
-      setError('Network error contacting reset service.');
+      setError('Network error contacting reset service. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-16 space-y-6">
-      <div className="text-center space-y-2">
-        <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mx-auto text-amber-400">
-          <KeyRound className="w-6 h-6" />
+    <FadeIn className="relative max-w-md mx-auto px-4 py-16 space-y-6">
+      <HeroAmbientBeams className="opacity-70" />
+      <div className="relative z-10 text-center space-y-2">
+        <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center mx-auto text-blue-600 shadow-xs">
+          <KeyRound className="w-7 h-7" />
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-white">Reset Account Password</h1>
-        <p className="text-xs sm:text-sm text-slate-400">
-          Enter your registered email address to receive a secure password reset link.
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          Forgot Your Password?
+        </h1>
+        <span className="block text-teal-700 font-bangla text-base font-bold">
+          পাসওয়ার্ড রিসেট কোড (OTP) অনুরোধ
+        </span>
+        <p className="text-xs text-slate-500 max-w-sm mx-auto">
+          Enter your registered email address. We will dispatch a secure 6-digit OTP code to verify your identity.
         </p>
       </div>
 
-      <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-5 shadow-2xl">
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 space-y-5 shadow-xs">
         {error && (
-          <div className="p-3.5 rounded-xl bg-red-950/50 border border-red-800 text-red-300 text-xs flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+          <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
             <span>{error}</span>
           </div>
         )}
 
-        {message && (
-          <div className="p-4 rounded-xl bg-emerald-950/50 border border-emerald-800 text-emerald-300 text-xs space-y-3">
-            <div className="flex items-center space-x-2 font-semibold">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>{message}</span>
+        {message ? (
+          <div className="space-y-4 text-center py-4">
+            <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto text-emerald-600 animate-pulse">
+              <CheckCircle2 className="w-8 h-8" />
             </div>
-            {resetUrl && (
-              <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 text-[11px] space-y-1">
-                <span className="text-slate-400 font-mono block">Dev Direct Reset Link:</span>
-                <Link href={resetUrl} className="text-cyan-400 underline font-mono break-all hover:text-cyan-300">
-                  {resetUrl}
-                </Link>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-slate-900">Reset Code Dispatched!</h3>
+              <p className="text-xs text-slate-600">{message}</p>
+              <p className="text-xs text-teal-700 font-semibold pt-1">Redirecting to code entry page...</p>
+            </div>
+
+            <div className="pt-2">
+              <Link
+                href={`/auth/reset-password?email=${encodeURIComponent(email)}`}
+                className="inline-flex items-center space-x-2 py-2.5 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase transition shadow-xs"
+              >
+                <span>Enter Reset Code Now</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">Registered Email Address</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. rafiqul@example.com"
+                  className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-xs transition"
+                />
               </div>
-            )}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-300">Account Email</label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="commander@relief.ai"
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
-              />
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-cyan-950 flex items-center justify-center space-x-2 disabled:opacity-50"
-          >
-            <span>{loading ? 'Generating Reset Token...' : 'Dispatch Reset Link'}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </form>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-500 flex items-center space-x-2">
+              <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+              <span className="text-xs">Security codes expire in 10 minutes from dispatch.</span>
+            </div>
 
-        <div className="pt-3 border-t border-slate-800 text-center">
-          <Link
-            href="/auth/login"
-            className="inline-flex items-center space-x-1.5 text-xs text-slate-400 hover:text-white transition"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to Sign In</span>
-          </Link>
-        </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-shine w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider transition shadow-xs flex items-center justify-center space-x-2 cursor-pointer"
+            >
+              {loading ? (
+                <span>Dispatching Code...</span>
+              ) : (
+                <>
+                  <span>Send 6-Digit Reset Code</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+        )}
       </div>
-    </div>
+
+      <div className="relative z-10 text-center text-xs text-slate-500">
+        <Link href="/auth/login" className="text-slate-600 hover:text-slate-900 inline-flex items-center space-x-1 font-bold">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Sign In</span>
+        </Link>
+      </div>
+    </FadeIn>
   );
 }

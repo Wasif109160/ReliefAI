@@ -10,6 +10,7 @@ export interface User {
   role: UserRole;
   isEmailVerified: boolean;
   badgeNumber?: string;
+  assignedTeamId?: string;
   organization?: string;
   phone?: string;
   phoneNumber?: string;
@@ -22,6 +23,9 @@ export interface User {
   assignedZone?: string;
   avatar?: string;
   avatarUrl?: string;
+  failedLoginAttempts?: number;
+  lockoutUntil?: string;
+  status?: 'active' | 'pending_approval' | 'suspended';
   createdAt: string;
   updatedAt?: string;
 }
@@ -51,19 +55,60 @@ export interface RefreshTokenRecord {
 export interface PasswordResetToken {
   id: string;
   userId: string;
+  email?: string;
   token: string;
+  otp?: string;
   expiresAt: string;
   usedAt?: string;
+  attempts?: number;
   createdAt: string;
 }
 
 export interface EmailVerificationToken {
   id: string;
   userId: string;
-  token: string;
+  email?: string;
+  token?: string;
+  otp?: string;
+  type?: 'email_verification' | 'password_reset' | 'login_verify' | 'email_change' | 'activation';
   expiresAt: string;
   usedAt?: string;
+  attempts?: number;
   createdAt: string;
+}
+
+export interface NGOApplication {
+  id: string;
+  organizationName: string;
+  registrationNumber: string;
+  focalPersonName: string;
+  focalPersonEmail: string;
+  focalPersonPhone: string;
+  website?: string;
+  hqAddress: string;
+  operationalDistricts: string[];
+  reliefCapabilities: string[];
+  documentName?: string;
+  documentData?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  adminNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface EmailOutboxRecord {
+  id: string;
+  to: string;
+  toName?: string;
+  subject: string;
+  type: 'verification_otp' | 'password_reset_otp' | 'welcome' | 'email_change_otp' | 'ngo_applied' | 'ngo_approved' | 'account_provisioned';
+  otpCode?: string;
+  htmlContent: string;
+  textContent: string;
+  sentAt: string;
+  delivered: boolean;
 }
 
 export type DisasterType = 'flood' | 'earthquake' | 'wildfire' | 'hurricane' | 'industrial' | 'medical' | 'environmental';

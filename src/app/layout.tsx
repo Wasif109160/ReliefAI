@@ -27,6 +27,11 @@ const hindSiliguri = Hind_Siliguri({
 export const metadata: Metadata = {
   title: 'ReliefAI Bangladesh (রিলিফএআই) - Autonomous Disaster Response & Environmental Protection Platform',
   description: 'AI-driven crisis intelligence for Bangladesh: Multimodal satellite flood detection, cyclone early warnings, Fire Service SAR dispatch, and river pollution telemetry.',
+  icons: {
+    icon: '/favicon-logo.png',
+    shortcut: '/favicon-logo.png',
+    apple: '/favicon-logo.png',
+  },
 };
 
 export default function RootLayout({
@@ -37,9 +42,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${hindSiliguri.variable} h-full dark antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${hindSiliguri.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#060b13] text-slate-100 selection:bg-red-500 selection:text-white">
+      <head>
+        <link rel="icon" type="image/png" href="/favicon-logo.png" />
+      </head>
+      <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 selection:bg-blue-600 selection:text-white">
         <AuthProvider>
           <NotificationProvider>
             <EmergencyBanner />

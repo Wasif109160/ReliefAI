@@ -29,7 +29,7 @@ export async function POST() {
 
     // 2. Hash token to look up in persistent DB
     const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    const tokenRecord = authDb.findRefreshToken(tokenHash);
+    const tokenRecord = await authDb.findRefreshToken(tokenHash);
 
     // 3. Token Reuse Detection (OWASP Recommendation)
     if (!tokenRecord) {
@@ -42,8 +42,8 @@ export async function POST() {
 
     if (tokenRecord.isRevoked) {
       // Replay attack detected! Revoke the whole family and purge sessions.
-      authDb.revokeTokenFamily(tokenRecord.familyId);
-      authDb.deleteUserSessions(tokenRecord.userId);
+      await authDb.revokeTokenFamily(tokenRecord.familyId);
+      await authDb.deleteUserSessions(tokenRecord.userId);
 
       const response = NextResponse.json(
         {
@@ -59,7 +59,7 @@ export async function POST() {
     tokenRecord.isRevoked = true;
 
     // 5. Look up user
-    const user = authDb.findUserById(tokenRecord.userId);
+    const user = await authDb.findUserById(tokenRecord.userId);
     if (!user) {
       const response = NextResponse.json(
         { error: 'User associated with session not found', code: 'USER_NOT_FOUND' },
@@ -74,12 +74,15 @@ export async function POST() {
     // 7. Issue new rotated Refresh Token within the same family
     const newRefreshToken = await signRefreshToken({
       userId: user.id,
+      role: user.role,
+      email: user.email,
+      name: user.name,
       familyId: tokenRecord.familyId,
       sessionId,
     });
 
     const newTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
-    authDb.storeRefreshToken({
+    await authDb.storeRefreshToken({
       userId: user.id,
       tokenHash: newTokenHash,
       familyId: tokenRecord.familyId,

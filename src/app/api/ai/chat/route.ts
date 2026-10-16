@@ -12,8 +12,8 @@ export async function POST(req: Request) {
     }
 
     // Enrich with live context data from DB
-    const stats = db.getStats();
-    const disasters = db.getDisasters();
+    const stats = await db.getStats();
+    const disasters = await db.getDisasters();
     const context = `Active Disasters: ${disasters.map((d) => `${d.title} (${d.status}, ${d.severity})`).join('; ')}. Stats: ${JSON.stringify(stats)}`;
 
     const response = await AIService.generateResponse(prompt, mode || 'command', context);
