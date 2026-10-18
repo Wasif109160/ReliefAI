@@ -166,7 +166,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (user.role === newRole) {
-      router.push(`/dashboard/${newRole === 'volunteer' || newRole === 'responder' ? 'rescue' : newRole}`);
+      if (newRole === 'commander') {
+        router.push('/command');
+      } else if (newRole === 'volunteer') {
+        router.push('/dashboard/volunteer');
+      } else if (newRole === 'responder') {
+        router.push('/dashboard/rescue');
+      } else {
+        router.push(`/dashboard/${newRole}`);
+      }
     } else {
       console.warn(`[ReliefAI Security] Role switch denied: User possesses role '${user.role}', requested '${newRole}'.`);
     }

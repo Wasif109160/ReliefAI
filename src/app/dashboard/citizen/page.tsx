@@ -29,6 +29,7 @@ import TacticalMap from '@/components/TacticalMap';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { HeroAmbientBeams } from '@/components/ui/hero-ambient-beams';
 import { FadeIn } from '@/components/ui/motion-wrapper';
+import { DemoModeBanner } from '@/components/ui/demo-mode-indicator';
 
 const NEARBY_SHELTERS = [
   {
@@ -114,6 +115,9 @@ export default function CitizenDashboard() {
 
   return (
     <FadeIn className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Demo Mode & Provenance Banner */}
+      <DemoModeBanner compact mode="demo" />
+
       {/* Citizen Safety Sub-navigation */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3 text-xs">
         <div className="flex items-center space-x-2">

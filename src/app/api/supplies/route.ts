@@ -1,18 +1,26 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/server/rbac';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 export async function GET() {
   try {
     const supplies = await db.getSupplies();
     return NextResponse.json(supplies);
   } catch (err) {
+    if (isDatabaseUnavailableError(err)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Error fetching supplies:', err);
     return NextResponse.json({ error: 'Failed to fetch supplies' }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/supplies');
+  if (showcaseBlock) return showcaseBlock;
+
   const auth = await requireAuth(['ngo', 'admin', 'government', 'commander']);
   if (!auth.authenticated || !auth.user) {
     return auth.errorResponse!;
@@ -39,7 +47,10 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(updated);
-  } catch {
+  } catch (err) {
+    if (isDatabaseUnavailableError(err)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Failed to update supply' }, { status: 500 });
   }
 }

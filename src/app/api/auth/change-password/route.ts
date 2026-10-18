@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { authDb } from '@/lib/server/auth-db';
-import { verifyAccessToken } from '@/lib/server/jwt';
-import { COOKIE_ACCESS_TOKEN } from '@/lib/server/cookies';
+import { verifyAccessToken, signAccessToken, signRefreshToken } from '@/lib/server/jwt';
+import { COOKIE_ACCESS_TOKEN, setAuthCookies } from '@/lib/server/cookies';
+import { getClientIp } from '@/lib/server/security';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 const ChangePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
@@ -12,6 +16,9 @@ const ChangePasswordSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/auth/change-password');
+  if (showcaseBlock) return showcaseBlock;
+
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get(COOKIE_ACCESS_TOKEN)?.value;
@@ -49,11 +56,53 @@ export async function POST(req: Request) {
     // Hash new password
     await authDb.updateUserPassword(user.id, newPassword);
 
-    return NextResponse.json({
+    // Invalidate all existing sessions and refresh tokens globally
+    await authDb.deleteUserSessions(user.id);
+
+    // Re-issue a fresh session for the current client to prevent sudden session disruption
+    const ipAddress = getClientIp(req);
+    const userAgent = req.headers.get('user-agent') || 'Browser';
+    const newSession = await authDb.createSession(user.id, ipAddress, userAgent);
+
+    const familyId = `fam-${crypto.randomUUID()}`;
+    const refreshToken = await signRefreshToken({
+      userId: user.id,
+      role: user.role,
+      email: user.email,
+      name: user.name,
+      familyId,
+      sessionId: newSession.id,
+    });
+    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    await authDb.storeRefreshToken({
+      userId: user.id,
+      tokenHash,
+      familyId,
+      expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+    });
+
+    const newAccessToken = await signAccessToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      sessionId: newSession.id,
+    });
+
+    const response = NextResponse.json({
       success: true,
-      message: 'Password changed successfully',
+      message: 'Password changed successfully. All previous sessions have been revoked.',
+    });
+
+    return setAuthCookies(response, {
+      accessToken: newAccessToken,
+      refreshToken,
+      rememberMe: false,
     });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Change password error:', error);
     return NextResponse.json({ error: 'Failed to update password' }, { status: 500 });
   }

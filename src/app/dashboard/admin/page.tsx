@@ -29,6 +29,7 @@ import StatCard from '@/components/StatCard';
 import TacticalMap from '@/components/TacticalMap';
 import { HeroAmbientBeams } from '@/components/ui/hero-ambient-beams';
 import { FadeIn } from '@/components/ui/motion-wrapper';
+import { DemoModeBanner } from '@/components/ui/demo-mode-indicator';
 
 const systemLogs = [
   { id: 'log-1', timestamp: '12:54:10', type: 'DISPATCH', event: 'FSCD Task Force USAR 1 deployed to Sylhet Gowainghat rooftop extraction' },
@@ -53,7 +54,7 @@ export default function AdminDashboard() {
 
   // Provisioning Modal state
   const [showProvisionModal, setShowProvisionModal] = useState(false);
-  const [provRole, setProvRole] = useState<'rescue_team' | 'government'>('rescue_team');
+  const [provRole, setProvRole] = useState<UserRole>('rescue_team');
   const [provName, setProvName] = useState('');
   const [provEmail, setProvEmail] = useState('');
   const [provOrg, setProvOrg] = useState('Fire Service & Civil Defence (FSCD)');
@@ -180,6 +181,9 @@ export default function AdminDashboard() {
 
   return (
     <FadeIn className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Demo Mode & Provenance Banner */}
+      <DemoModeBanner compact mode="demo" />
+
       {/* Admin Sub-navigation */}
       <div className="flex items-center justify-between border-b border-slate-200 pb-3 text-xs">
         <div className="flex items-center space-x-2">
@@ -671,37 +675,82 @@ export default function AdminDashboard() {
             <form onSubmit={handleProvisionSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-700">Clearance Role</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProvRole('rescue_team');
-                      setProvOrg('Fire Service & Civil Defence (FSCD)');
-                      setProvZone('Sylhet Division Riverine Sector 1');
-                    }}
-                    className={`p-2.5 rounded-xl border text-xs font-bold transition text-left ${
-                      provRole === 'rescue_team'
-                        ? 'bg-amber-50 border-amber-400 text-amber-800 ring-1 ring-amber-400'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    🚒 Rescue Team (SAR)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProvRole('government');
-                      setProvOrg('Ministry of Disaster Management & Relief');
-                      setProvZone('National EOC Secretariat Dhaka');
-                    }}
-                    className={`p-2.5 rounded-xl border text-xs font-bold transition text-left ${
-                      provRole === 'government'
-                        ? 'bg-blue-50 border-blue-400 text-blue-800 ring-1 ring-blue-400'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    🏛️ Government Agency
-                  </button>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    {
+                      role: 'commander' as const,
+                      label: 'Incident Commander',
+                      icon: '🛡️',
+                      defaultOrg: 'Joint Disaster Management Agency (JDMA)',
+                      defaultZone: 'National EOC Command Center',
+                      activeColor: 'bg-red-50 border-red-400 text-red-800 ring-1 ring-red-400',
+                    },
+                    {
+                      role: 'rescue_team' as const,
+                      label: 'Rescue Team (SAR)',
+                      icon: '🚒',
+                      defaultOrg: 'Fire Service & Civil Defence (FSCD)',
+                      defaultZone: 'Sylhet Division Riverine Sector 1',
+                      activeColor: 'bg-amber-50 border-amber-400 text-amber-800 ring-1 ring-amber-400',
+                    },
+                    {
+                      role: 'responder' as const,
+                      label: 'Field Responder',
+                      icon: '🚨',
+                      defaultOrg: 'USAR Rapid Deployment Force',
+                      defaultZone: 'Sylhet Rapid Response Sector',
+                      activeColor: 'bg-orange-50 border-orange-400 text-orange-800 ring-1 ring-orange-400',
+                    },
+                    {
+                      role: 'government' as const,
+                      label: 'Government Agency',
+                      icon: '🏛️',
+                      defaultOrg: 'Ministry of Disaster Management & Relief',
+                      defaultZone: 'National EOC Secretariat Dhaka',
+                      activeColor: 'bg-blue-50 border-blue-400 text-blue-800 ring-1 ring-blue-400',
+                    },
+                    {
+                      role: 'ngo' as const,
+                      label: 'NGO Coordinator',
+                      icon: '🏢',
+                      defaultOrg: 'Humanitarian Relief Cluster Alliance',
+                      defaultZone: 'Regional Logistics Depot Alpha',
+                      activeColor: 'bg-emerald-50 border-emerald-400 text-emerald-800 ring-1 ring-emerald-400',
+                    },
+                    {
+                      role: 'volunteer' as const,
+                      label: 'Volunteer Personnel',
+                      icon: '🤝',
+                      defaultOrg: 'Community Emergency Volunteer Corps',
+                      defaultZone: 'Sylhet Community Sector',
+                      activeColor: 'bg-teal-50 border-teal-400 text-teal-800 ring-1 ring-teal-400',
+                    },
+                    {
+                      role: 'admin' as const,
+                      label: 'System Admin',
+                      icon: '🔑',
+                      defaultOrg: 'ReliefAI Central Operations Command',
+                      defaultZone: 'National Cyber & Infrastructure Security',
+                      activeColor: 'bg-purple-50 border-purple-400 text-purple-800 ring-1 ring-purple-400',
+                    },
+                  ].map((item) => (
+                    <button
+                      key={item.role}
+                      type="button"
+                      onClick={() => {
+                        setProvRole(item.role);
+                        setProvOrg(item.defaultOrg);
+                        setProvZone(item.defaultZone);
+                      }}
+                      className={`p-2 rounded-xl border text-[11px] font-bold transition text-left cursor-pointer ${
+                        provRole === item.role
+                          ? item.activeColor
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>{item.icon} {item.label}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
 

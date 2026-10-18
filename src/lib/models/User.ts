@@ -23,7 +23,7 @@ export interface IUserDocument extends Document {
   };
   failedLoginAttempts?: number;
   lockoutUntil?: string;
-  status?: 'active' | 'pending_approval' | 'suspended';
+  status?: 'active' | 'approved' | 'pending' | 'pending_approval' | 'rejected' | 'suspended';
   createdAt: string;
   updatedAt?: string;
 }
@@ -37,7 +37,7 @@ const UserSchema = new Schema<IUserDocument>(
     passwordHash: { type: String },
     role: {
       type: String,
-      enum: ['citizen', 'rescue_team', 'ngo', 'government', 'admin', 'volunteer', 'commander', 'responder'],
+      enum: ['citizen', 'rescue_team', 'ngo', 'government', 'admin', 'volunteer', 'commander', 'responder', 'super_admin'],
       default: 'citizen',
       index: true,
     },
@@ -58,8 +58,8 @@ const UserSchema = new Schema<IUserDocument>(
     lockoutUntil: { type: String },
     status: {
       type: String,
-      enum: ['active', 'pending_approval', 'suspended'],
-      default: 'active',
+      enum: ['active', 'approved', 'pending', 'pending_approval', 'rejected', 'suspended'],
+      default: 'approved',
     },
     createdAt: { type: String, default: () => new Date().toISOString() },
     updatedAt: { type: String },

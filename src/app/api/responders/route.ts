@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/server/rbac';
 import { authDb } from '@/lib/server/auth-db';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 const VALID_STATUSES = ['available', 'dispatched', 'en_route', 'on_scene', 'off_duty'] as const;
 
@@ -10,12 +12,18 @@ export async function GET() {
     const responders = await db.getResponders();
     return NextResponse.json(responders);
   } catch (err) {
+    if (isDatabaseUnavailableError(err)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Error fetching responders:', err);
     return NextResponse.json({ error: 'Failed to fetch responders' }, { status: 500 });
   }
 }
 
 export async function PATCH(req: Request) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/responders');
+  if (showcaseBlock) return showcaseBlock;
+
   const auth = await requireAuth(['rescue_team', 'commander', 'responder', 'admin', 'government']);
   if (!auth.authenticated || !auth.user) {
     return auth.errorResponse!;
@@ -63,7 +71,10 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 });
     }
     return NextResponse.json(updated);
-  } catch {
+  } catch (err) {
+    if (isDatabaseUnavailableError(err)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Failed to update responder status' }, { status: 500 });
   }
 }

@@ -6,20 +6,26 @@ import { emailService } from '@/lib/server/email-service';
 import { securityUtils } from '@/lib/server/security';
 import { UserRole } from '@/lib/types';
 import { db } from '@/lib/db';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 const ProvisionSchema = z.object({
   name: z.string().min(2, 'Full name is required'),
   email: z.string().email('Please enter a valid official email address'),
-  role: z.enum(['rescue_team', 'government', 'admin'] as const),
+  role: z.enum(['admin', 'government', 'rescue_team', 'ngo', 'commander', 'responder', 'volunteer'] as const),
   organization: z.string().min(2, 'Official agency or unit name is required'),
   badgeNumber: z.string().optional(),
   assignedTeamId: z.string().optional(),
   assignedZone: z.string().min(2, 'Assigned operational zone is required'),
   phone: z.string().optional(),
   temporaryPassword: z.string().min(8).optional(),
+  skills: z.array(z.string()).optional(),
 });
 
 export async function POST(req: Request) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/admin/users/provision');
+  if (showcaseBlock) return showcaseBlock;
+
   const auth = await requireAuth(['admin']);
   if (!auth.authenticated || !auth.user) {
     return auth.errorResponse!;
@@ -36,7 +42,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { name, email, role, organization, badgeNumber, assignedTeamId, assignedZone, phone, temporaryPassword } = result.data;
+    const { name, email, role, organization, badgeNumber, assignedTeamId, assignedZone, phone, temporaryPassword, skills } = result.data;
     const cleanEmail = email.toLowerCase().trim();
 
     // Validate assignedTeamId references an existing responder team
@@ -64,8 +70,20 @@ export async function POST(req: Request) {
     }
 
     // Generate credentials & 6-digit first-login verification code
-    const initialPass = temporaryPassword || `${role === 'rescue_team' ? 'Rescue' : 'Gov'}@${Math.floor(100000 + Math.random() * 900000)}`;
+    const prefixMap: Record<string, string> = {
+      admin: 'Admin',
+      government: 'Gov',
+      rescue_team: 'Rescue',
+      ngo: 'Ngo',
+      commander: 'Cmdr',
+      responder: 'Resp',
+      volunteer: 'Vol',
+    };
+    const rolePrefix = prefixMap[role] || 'Relief';
+    const initialPass = temporaryPassword || `${rolePrefix}@${Math.floor(100000 + Math.random() * 900000)}`;
     const otp = securityUtils.generateNumericOtp();
+
+    const defaultBadge = badgeNumber || `BD-${role.toUpperCase().replace('_', '').slice(0, 4)}-${Date.now().toString().slice(-4)}`;
 
     // Create user in database (isEmailVerified: false -> requires email OTP before dashboard access)
     const newUser = await authDb.createUser({
@@ -75,10 +93,11 @@ export async function POST(req: Request) {
       password: initialPass,
       role: role as UserRole,
       organization,
-      badgeNumber: badgeNumber || `BD-${role.toUpperCase().slice(0, 3)}-${Date.now().toString().slice(-4)}`,
+      badgeNumber: defaultBadge,
       assignedTeamId,
       assignedZone,
       phone: phone || '',
+      skills: skills || [],
       isEmailVerified: false,
     });
 
@@ -106,6 +125,9 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Provision user error:', error);
     return NextResponse.json(
       { error: 'Failed to provision official personnel account' },

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth } from '@/lib/server/rbac';
 import { authDb } from '@/lib/server/auth-db';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 const VerifyEmailChangeSchema = z.object({
   newEmail: z.string().email('Please enter a valid email address'),
@@ -9,6 +11,9 @@ const VerifyEmailChangeSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/auth/verify-email-change');
+  if (showcaseBlock) return showcaseBlock;
+
   const auth = await requireAuth();
   if (!auth.authenticated || !auth.user) {
     return auth.errorResponse!;
@@ -52,6 +57,9 @@ export async function POST(req: Request) {
       user: updatedUser ? authDb.sanitizeUser(updatedUser) : null,
     });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Verify email change error:', error);
     return NextResponse.json({ error: 'Failed to verify email change' }, { status: 500 });
   }

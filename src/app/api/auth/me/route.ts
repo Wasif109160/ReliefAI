@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import { authDb } from '@/lib/server/auth-db';
 import { verifyAccessToken, verifyRefreshToken, signAccessToken, signRefreshToken } from '@/lib/server/jwt';
 import { setAuthCookies, COOKIE_ACCESS_TOKEN, COOKIE_REFRESH_TOKEN } from '@/lib/server/cookies';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 export async function GET(req: Request) {
   try {
@@ -79,12 +81,18 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ user: null });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Error fetching current user:', error);
     return NextResponse.json({ user: null });
   }
 }
 
 export async function PATCH(req: Request) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/auth/me');
+  if (showcaseBlock) return showcaseBlock;
+
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get(COOKIE_ACCESS_TOKEN)?.value;
@@ -119,6 +127,9 @@ export async function PATCH(req: Request) {
       user: authDb.sanitizeUser(updatedUser),
     });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Error updating user profile:', error);
     return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
   }

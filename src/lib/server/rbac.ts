@@ -43,7 +43,7 @@ export async function requireAuth(allowedRoles?: UserRole[]): Promise<AuthCheckR
     };
   }
 
-  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(payload.role)) {
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(payload.role) && payload.role !== 'super_admin') {
     return {
       authenticated: false,
       user: payload,

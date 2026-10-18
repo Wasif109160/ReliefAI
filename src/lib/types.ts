@@ -1,4 +1,4 @@
-export type UserRole = 'citizen' | 'rescue_team' | 'ngo' | 'government' | 'admin' | 'volunteer' | 'commander' | 'responder';
+export type UserRole = 'citizen' | 'rescue_team' | 'ngo' | 'government' | 'admin' | 'volunteer' | 'commander' | 'responder' | 'super_admin';
 
 export interface User {
   id: string;
@@ -25,7 +25,7 @@ export interface User {
   avatarUrl?: string;
   failedLoginAttempts?: number;
   lockoutUntil?: string;
-  status?: 'active' | 'pending_approval' | 'suspended';
+  status?: 'active' | 'approved' | 'pending' | 'pending_approval' | 'rejected' | 'suspended';
   createdAt: string;
   updatedAt?: string;
 }
@@ -114,23 +114,39 @@ export interface EmailOutboxRecord {
 export type DisasterType = 'flood' | 'earthquake' | 'wildfire' | 'hurricane' | 'industrial' | 'medical' | 'environmental';
 export type SeverityLevel = 'critical' | 'high' | 'moderate' | 'low';
 export type IncidentStatus = 'active' | 'contained' | 'resolved';
+export type DataSourceType = 'historical' | 'live' | 'forecast' | 'demo';
+
+export interface DisasterSourceCitation {
+  sourceName: string;
+  sourceUrl?: string;
+  recordType: 'verified_historical' | 'simulated_demo' | 'official_forecast' | 'telemetered_live';
+  documentedYear?: number;
+  verificationNotes?: string;
+}
 
 export interface DisasterIncident {
   id: string;
   title: string;
+  banglaTitle?: string;
   type: DisasterType;
   severity: SeverityLevel;
   status: IncidentStatus;
+  dataSource: DataSourceType;
+  isDemo?: boolean;
+  citation?: DisasterSourceCitation;
   location: {
     name: string;
     lat: number;
     lng: number;
     radiusKm: number;
+    division?: string;
+    district?: string;
   };
   affectedPopulation: number;
   casualtiesReported: number;
   respondersDeployed: number;
   reportedAt: string;
+  occurredAt?: string;
   description: string;
   recommendedEvacuationRadiusKm: number;
   activeHazards: string[];

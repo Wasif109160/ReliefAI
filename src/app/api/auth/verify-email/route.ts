@@ -4,16 +4,44 @@ import { authDb } from '@/lib/server/auth-db';
 import { emailService } from '@/lib/server/email-service';
 import { signAccessToken, signRefreshToken } from '@/lib/server/jwt';
 import { setAuthCookies } from '@/lib/server/cookies';
+import { securityUtils, getClientIp } from '@/lib/server/security';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 const ROLE_DASHBOARDS: Record<string, string> = {
   citizen: '/dashboard/citizen',
   rescue_team: '/dashboard/rescue',
+  responder: '/dashboard/rescue',
+  commander: '/command',
+  volunteer: '/dashboard/volunteer',
   ngo: '/dashboard/ngo',
   government: '/dashboard/government',
   admin: '/dashboard/admin',
 };
 
 export async function POST(req: Request) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/auth/verify-email');
+  if (showcaseBlock) return showcaseBlock;
+
+  // Rate limiting: max 10 verification attempts per 60s per client IP
+  const clientIp = getClientIp(req);
+  const rateLimit = await securityUtils.checkPublicRateLimit(clientIp, 'VERIFY_EMAIL', 10, 60 * 1000);
+  if (!rateLimit.allowed) {
+    const statusCode = rateLimit.status || (rateLimit.isBackendError ? 503 : 429);
+    return NextResponse.json(
+      {
+        error: rateLimit.message,
+        code: rateLimit.isBackendError ? 'RATE_LIMITER_UNAVAILABLE' : 'RATE_LIMIT_EXCEEDED',
+      },
+      {
+        status: statusCode,
+        headers: rateLimit.retryAfterSeconds
+          ? { 'Retry-After': String(rateLimit.retryAfterSeconds) }
+          : undefined,
+      }
+    );
+  }
+
   try {
     const body = await req.json();
     const { email, otp, token } = body;
@@ -26,16 +54,30 @@ export async function POST(req: Request) {
       const cleanEmail = String(email).toLowerCase().trim();
       const cleanOtp = String(otp).trim();
 
-      const otpRecord = await authDb.findValidEmailVerificationOtp(cleanEmail, cleanOtp);
-      if (!otpRecord) {
+      const activeOtp = await authDb.findActiveEmailVerificationOtp(cleanEmail);
+      if (!activeOtp || (activeOtp.attempts !== undefined && activeOtp.attempts >= 5)) {
         return NextResponse.json(
-          { error: 'Invalid or expired 6-digit verification code. Please double-check the code or click Resend.' },
+          { error: 'Invalid or expired verification code. If you continue having trouble, please request a new code.' },
           { status: 400 }
         );
       }
 
-      targetUserId = otpRecord.userId;
-      targetOtpId = otpRecord.id;
+      if (activeOtp.otp !== cleanOtp) {
+        const { isLockedOut } = await authDb.incrementEmailVerificationOtpAttempts(cleanEmail);
+        if (isLockedOut) {
+          return NextResponse.json(
+            { error: 'Maximum verification attempts exceeded. For security, this verification code has been invalidated. Please request a new code.' },
+            { status: 400 }
+          );
+        }
+        return NextResponse.json(
+          { error: 'Invalid or expired verification code. Please check the code or request a new one.' },
+          { status: 400 }
+        );
+      }
+
+      targetUserId = activeOtp.userId;
+      targetOtpId = activeOtp.id;
     }
     // 2. Fallback to legacy token if provided
     else if (token) {
@@ -56,7 +98,7 @@ export async function POST(req: Request) {
     }
 
     if (!targetUserId) {
-      return NextResponse.json({ error: 'User could not be identified' }, { status: 404 });
+      return NextResponse.json({ error: 'Invalid or expired verification request.' }, { status: 400 });
     }
 
     // Mark user email verified in database
@@ -119,6 +161,9 @@ export async function POST(req: Request) {
       rememberMe: false,
     });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Email verification error:', error);
     return NextResponse.json(
       { error: 'Failed to verify email address. Please try again.' },

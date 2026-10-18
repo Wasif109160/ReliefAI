@@ -16,8 +16,11 @@ export default function ForbiddenPage() {
         return '/dashboard/government';
       case 'ngo':
         return '/dashboard/ngo';
-      case 'rescue_team':
+      case 'commander':
+        return '/command';
       case 'volunteer':
+        return '/dashboard/volunteer';
+      case 'rescue_team':
       case 'responder':
         return '/dashboard/rescue';
       case 'citizen':

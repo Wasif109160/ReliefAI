@@ -16,6 +16,7 @@ import {
 import { SOSRequest, ResponderTeam, DisasterIncident } from '@/lib/types';
 import { HeroAmbientBeams } from '@/components/ui/hero-ambient-beams';
 import { FadeIn } from '@/components/ui/motion-wrapper';
+import { DemoModeBanner } from '@/components/ui/demo-mode-indicator';
 
 export default function CommandPage() {
   const [sosList, setSosList] = useState<SOSRequest[]>([]);
@@ -149,6 +150,7 @@ export default function CommandPage() {
   return (
     <FadeIn className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <HeroAmbientBeams className="opacity-60" />
+      <DemoModeBanner compact mode="demo" />
       {/* Title & Status Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div>

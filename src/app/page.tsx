@@ -15,6 +15,7 @@ import {
   Sparkles,
   Bot,
   ShieldCheck,
+  BookOpen,
 } from 'lucide-react';
 import { ASSETS } from '@/lib/assets';
 import { SOSTrendChart, ShelterOccupancyChart } from '@/components/analytics/CrisisAnalyticsChart';
@@ -231,7 +232,13 @@ export default function HomePage() {
           </motion.div>
 
           {/* Real-time National Ticker Card */}
-          <div className="pt-8 max-w-5xl mx-auto">
+          <div className="pt-8 max-w-5xl mx-auto space-y-2">
+            <div className="flex items-center justify-between text-xs font-mono px-2">
+              <span className="font-bold text-slate-500 uppercase tracking-wider">SOVEREIGN NATIONAL BENCHMARKS</span>
+              <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                CALIBRATION BENCHMARK • SIMULATED METRICS
+              </span>
+            </div>
             <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
               <div className="space-y-1 border-r border-slate-100 pr-3 last:border-r-0">
                 <span className="text-[10px] font-mono text-slate-500 uppercase font-bold tracking-wider">Surma & Jamuna Rivers</span>
@@ -393,17 +400,29 @@ export default function HomePage() {
                 <span>MULTIMODAL AI SATELLITE & DAMAGE TRIAGE ENGINE</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-                Real-Time Crisis Telemetry & Resource Extraction
+                Crisis Telemetry & Resource Extraction
               </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Visualizing multi-agency triage volume and facility intake during simulated flood and cyclone drills.
+              </p>
             </div>
 
-            <Link
-              href="/ai-copilot"
-              className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider transition shadow-xs"
-            >
-              <Bot className="w-4 h-4" />
-              <span>Launch AI Copilot (বাংলা চ্যাট)</span>
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/disasters"
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition shadow-xs"
+              >
+                <BookOpen className="w-4 h-4 text-blue-600" />
+                <span>Disaster Archive</span>
+              </Link>
+              <Link
+                href="/ai-copilot"
+                className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider transition shadow-xs"
+              >
+                <Bot className="w-4 h-4" />
+                <span>Launch AI Copilot (বাংলা চ্যাট)</span>
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

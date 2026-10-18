@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { securityUtils, getClientIp } from '@/lib/server/security';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 export async function GET() {
   try {
@@ -8,12 +10,18 @@ export async function GET() {
     const totalRaised = donations.reduce((acc, d) => acc + d.amount, 0);
     return NextResponse.json({ donations, totalRaised });
   } catch (err) {
+    if (isDatabaseUnavailableError(err)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Error fetching donations:', err);
     return NextResponse.json({ error: 'Failed to fetch donations' }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/donations');
+  if (showcaseBlock) return showcaseBlock;
+
   // Rate limiting: max 15 donation attempts per 60s per client IP
   const clientIp = getClientIp(req);
   const rateLimit = await securityUtils.checkPublicRateLimit(clientIp, 'POST_DONATIONS', 15, 60 * 1000);
@@ -55,7 +63,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(created, { status: 201 });
-  } catch {
+  } catch (err) {
+    if (isDatabaseUnavailableError(err)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Failed to record donation' }, { status: 500 });
   }
 }

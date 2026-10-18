@@ -34,14 +34,18 @@ function LoginFormContent() {
 
   const getDashboardForRole = (roleName: string) => {
     switch (roleName) {
+      case 'super_admin':
       case 'admin':
         return '/dashboard/admin';
       case 'government':
         return '/dashboard/government';
       case 'ngo':
         return '/dashboard/ngo';
-      case 'rescue_team':
+      case 'commander':
+        return '/command';
       case 'volunteer':
+        return '/dashboard/volunteer';
+      case 'rescue_team':
       case 'responder':
         return '/dashboard/rescue';
       case 'citizen':

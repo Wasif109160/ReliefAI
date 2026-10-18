@@ -7,6 +7,8 @@ import { signAccessToken, signRefreshToken } from '@/lib/server/jwt';
 import { setAuthCookies } from '@/lib/server/cookies';
 import { emailService } from '@/lib/server/email-service';
 import { securityUtils } from '@/lib/server/security';
+import { isDesignatedDemoEmail, isShowcaseMode, getDesignatedDemoRole } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 const LoginSchema = z.object({
   email: z.string().email('Please provide a valid email address'),
@@ -15,8 +17,12 @@ const LoginSchema = z.object({
 });
 
 const ROLE_DASHBOARDS: Record<string, string> = {
+  super_admin: '/dashboard/admin',
   citizen: '/dashboard/citizen',
   rescue_team: '/dashboard/rescue',
+  responder: '/dashboard/rescue',
+  commander: '/command',
+  volunteer: '/dashboard/volunteer',
   ngo: '/dashboard/ngo',
   government: '/dashboard/government',
   admin: '/dashboard/admin',
@@ -82,25 +88,48 @@ export async function POST(req: Request) {
     // Credentials Verified -> Reset Failed Attempts Counter
     securityUtils.recordSuccessfulLogin(cleanEmail);
 
+    // Validate designated demo account against its expected role
+    if (isDesignatedDemoEmail(cleanEmail)) {
+      const expectedRole = getDesignatedDemoRole(cleanEmail);
+      if (expectedRole && user.role !== expectedRole) {
+        console.warn(
+          `[ReliefAI Security] Role mismatch for demo account ${cleanEmail}: database role '${user.role}' !== expected '${expectedRole}'`
+        );
+        return NextResponse.json(
+          {
+            error: 'Security policy violation: Demo account role mismatch. Login denied.',
+            code: 'DEMO_ROLE_MISMATCH',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     // 4. Email Verification Check
     // "If the email is not verified, redirect to Email Verification. Allow login only after email verification."
     if (!user.isEmailVerified) {
-      // Generate a fresh 6-digit OTP
-      const otp = securityUtils.generateNumericOtp();
-      await authDb.createEmailVerificationOtp(user.id, user.email, otp, 'login_verify', 10);
-      await emailService.sendVerificationOtpEmail(user.email, user.name, otp, 10);
+      if (isShowcaseMode() && isDesignatedDemoEmail(cleanEmail)) {
+        // Narrowly-scoped server-controlled demo policy: Auto-activate designated showcase accounts
+        await authDb.verifyUserEmail(user.id);
+        user.isEmailVerified = true;
+      } else {
+        // Normal public registrations strictly require email verification via 6-digit OTP
+        const otp = securityUtils.generateNumericOtp();
+        await authDb.createEmailVerificationOtp(user.id, user.email, otp, 'login_verify', 10);
+        await emailService.sendVerificationOtpEmail(user.email, user.name, otp, 10);
 
-      return NextResponse.json(
-        {
-          error:
-            'Email verification is required before accessing your operational dashboard. A 6-digit verification code has been dispatched to your email address.',
-          code: 'EMAIL_NOT_VERIFIED',
-          email: user.email,
-          requiresVerification: true,
-          otpPreview: process.env.NODE_ENV !== 'production' ? otp : undefined,
-        },
-        { status: 403 }
-      );
+        return NextResponse.json(
+          {
+            error:
+              'Email verification is required before accessing your operational dashboard. A 6-digit verification code has been dispatched to your email address.',
+            code: 'EMAIL_NOT_VERIFIED',
+            email: user.email,
+            requiresVerification: true,
+            otpPreview: process.env.NODE_ENV !== 'production' ? otp : undefined,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // 5. Create Session
@@ -157,6 +186,12 @@ export async function POST(req: Request) {
       rememberMe,
     });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json(
+        { error: 'Database service is currently unavailable. Please try again shortly.', code: 'DATABASE_UNAVAILABLE' },
+        { status: 503 }
+      );
+    }
     console.error('Login error:', error);
     return NextResponse.json(
       { error: 'Internal authentication error. Please try again.' },

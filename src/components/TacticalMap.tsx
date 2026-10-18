@@ -16,7 +16,9 @@ import {
   LifeBuoy,
 } from 'lucide-react';
 import { ASSETS } from '@/lib/assets';
-import { DisasterIncident, SOSRequest, Shelter, ResponderTeam } from '@/lib/types';
+import { DisasterIncident, SOSRequest, Shelter, ResponderTeam, DataSourceType, DisasterSourceCitation } from '@/lib/types';
+import { DataSourceBadge } from '@/components/ui/demo-mode-indicator';
+import { ExternalLink, BookOpen } from 'lucide-react';
 
 export interface BangladeshMarker {
   id: string;
@@ -32,6 +34,9 @@ export interface BangladeshMarker {
   image: string;
   metric?: string;
   contact?: string;
+  dataSource?: DataSourceType;
+  isDemo?: boolean;
+  citation?: DisasterSourceCitation;
 }
 
 const BANGLADESH_MARKERS: BangladeshMarker[] = [
@@ -225,6 +230,7 @@ export default function TacticalMap({
   isLoading = false,
 }: TacticalMapProps = {}) {
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'historical' | 'demo' | 'live'>('all');
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
 
   const isLiveMode = Boolean(disasters || sosRequests || shelters || responders);
@@ -236,20 +242,24 @@ export default function TacticalMap({
     if (disasters && Array.isArray(disasters)) {
       for (const d of disasters) {
         if (d.location && isValidBangladeshCoord(d.location.lat, d.location.lng)) {
+          const ds = d.dataSource || (d.isDemo ? 'demo' : 'historical');
           list.push({
             id: d.id,
             title: d.title,
-            banglaTitle: d.title,
+            banglaTitle: d.banglaTitle || d.title,
             type: d.type === 'hurricane' ? 'cyclone' : d.type === 'wildfire' || d.type === 'industrial' ? 'fire' : 'flood',
             district: d.location.name || 'Disaster Incident Zone',
             lat: d.location.lat,
             lng: d.location.lng,
             severity: d.severity === 'critical' ? 'CRITICAL' : d.severity === 'high' ? 'HIGH' : 'MEDIUM',
-            status: `${d.severity?.toUpperCase() || 'ACTIVE'} • ${d.affectedPopulation ? `${d.affectedPopulation.toLocaleString()} Affected` : 'Active Hazard'}`,
-            details: d.description || (d.activeHazards && d.activeHazards.join(', ')) || 'Active disaster incident reported.',
+            status: `${d.severity?.toUpperCase() || 'ACTIVE'} • ${d.affectedPopulation ? `${d.affectedPopulation.toLocaleString()} Affected` : 'Incident Record'}`,
+            details: d.description || (d.activeHazards && d.activeHazards.join(', ')) || 'Disaster incident report.',
             image: d.type === 'flood' ? ASSETS.flood : d.type === 'hurricane' ? ASSETS.cycloneShelter : ASSETS.fireService,
-            metric: `Responders: ${d.respondersDeployed ?? 0} | Evac Radius: ${d.recommendedEvacuationRadiusKm ?? 10}km`,
+            metric: `Evac Radius: ${d.recommendedEvacuationRadiusKm ?? 10}km | Est. Responders: ${d.respondersDeployed ?? 0}`,
             contact: 'National Disaster Helpline: 1090',
+            dataSource: ds,
+            isDemo: Boolean(d.isDemo || ds === 'demo'),
+            citation: d.citation,
           });
         }
       }
@@ -272,6 +282,8 @@ export default function TacticalMap({
             image: ASSETS.rescueOperation,
             metric: `Trapped: ${s.trappedCount} citizens | Urgent Score: ${s.urgencyScore ?? 0}`,
             contact: s.phone ? `Caller: ${s.phone}` : 'Emergency Hotline: 999',
+            dataSource: 'demo',
+            isDemo: true,
           });
         }
       }
@@ -294,6 +306,8 @@ export default function TacticalMap({
             image: ASSETS.cycloneShelter,
             metric: `Capacity Utilized: ${Math.round((sh.currentOccupancy / (sh.capacity || 1)) * 100)}%`,
             contact: sh.contactPhone || 'Disaster Shelter Cell',
+            dataSource: 'demo',
+            isDemo: true,
           });
         }
       }
@@ -316,6 +330,8 @@ export default function TacticalMap({
             image: ASSETS.rescueOperation,
             metric: `Comms: ${r.radioFreq} | Incident: ${r.currentIncidentId || 'Standby'}`,
             contact: `Radio Net: ${r.radioFreq}`,
+            dataSource: 'demo',
+            isDemo: true,
           });
         }
       }
@@ -327,11 +343,15 @@ export default function TacticalMap({
   const activeMarkers = isLiveMode ? liveMarkers : BANGLADESH_MARKERS;
 
   const filteredMarkers = activeMarkers.filter((m) => {
-    if (activeFilter === 'all') return true;
-    return m.type === activeFilter;
+    const matchesType = activeFilter === 'all' || m.type === activeFilter;
+    const matchesSource = sourceFilter === 'all' || (m.dataSource ? m.dataSource === sourceFilter : sourceFilter === 'demo');
+    return matchesType && matchesSource;
   });
 
   const selectedMarker = filteredMarkers.find((m) => m.id === selectedMarkerId) || filteredMarkers[0] || null;
+
+  const hasLiveRecord = filteredMarkers.some((m) => m.dataSource === 'live');
+  const hasHistoricalOnly = filteredMarkers.length > 0 && filteredMarkers.every((m) => m.dataSource === 'historical');
 
   return (
     <div className="relative w-full rounded-2xl bg-white overflow-hidden border border-slate-200/90 shadow-xs flex flex-col xl:flex-row h-[740px] text-slate-900">
@@ -369,32 +389,60 @@ export default function TacticalMap({
         />
 
         {/* Filter Bar Floating Pills */}
-        <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-1.5 max-w-xl">
-          {[
-            { id: 'all', label: 'All Incidents (সকল)', icon: Compass },
-            { id: 'flood', label: 'Floods (বন্যা)', icon: Droplets },
-            { id: 'cyclone', label: 'Cyclones (ঘূর্ণিঝড়)', icon: Wind },
-            { id: 'fire', label: 'Fire Service (ফায়ার)', icon: Flame },
-            { id: 'shelter', label: 'Shelters (আশ্রয়)', icon: Home },
-            { id: 'hospital', label: 'Hospitals (হাসপাতাল)', icon: HeartHandshake },
-            { id: 'rescue', label: 'Rescue SAR (উদ্ধার)', icon: LifeBuoy },
-            { id: 'environment', label: 'Environment (নদী)', icon: Trees },
-          ].map((btn) => {
-            const isSelected = activeFilter === btn.id;
-            return (
-              <button
-                key={btn.id}
-                onClick={() => setActiveFilter(btn.id)}
-                className={`py-1.5 px-3 rounded-xl text-[11px] font-bold transition flex items-center space-x-1 border shadow-xs ${
-                  isSelected
-                    ? 'bg-blue-600 border-blue-600 text-white shadow-blue-500/20'
-                    : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <span>{btn.label}</span>
-              </button>
-            );
-          })}
+        <div className="absolute top-4 left-4 z-20 flex flex-col gap-1.5 max-w-xl">
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { id: 'all', label: 'All Incidents (সকল)', icon: Compass },
+              { id: 'flood', label: 'Floods (বন্যা)', icon: Droplets },
+              { id: 'cyclone', label: 'Cyclones (ঘূর্ণিঝড়)', icon: Wind },
+              { id: 'fire', label: 'Fire Service (ফায়ার)', icon: Flame },
+              { id: 'shelter', label: 'Shelters (আশ্রয়)', icon: Home },
+              { id: 'hospital', label: 'Hospitals (হাসপাতাল)', icon: HeartHandshake },
+              { id: 'rescue', label: 'Rescue SAR (উদ্ধার)', icon: LifeBuoy },
+              { id: 'environment', label: 'Environment (নদী)', icon: Trees },
+            ].map((btn) => {
+              const isSelected = activeFilter === btn.id;
+              return (
+                <button
+                  key={btn.id}
+                  onClick={() => setActiveFilter(btn.id)}
+                  className={`py-1.5 px-3 rounded-xl text-[11px] font-bold transition flex items-center space-x-1 border shadow-xs ${
+                    isSelected
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-blue-500/20'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>{btn.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Data Source Filter Selector */}
+          <div className="flex items-center gap-1 bg-white/95 p-1 rounded-xl border border-slate-200 shadow-xs backdrop-blur-xs w-fit">
+            <span className="text-[10px] font-mono font-bold text-slate-500 px-2 uppercase">Data Provenance:</span>
+            {[
+              { id: 'all', label: 'All Data' },
+              { id: 'historical', label: '🏛️ Verified Historical' },
+              { id: 'demo', label: '🧪 Demo Drills' },
+            ].map((src) => {
+              const isSelected = sourceFilter === src.id;
+              return (
+                <button
+                  key={src.id}
+                  type="button"
+                  onClick={() => setSourceFilter(src.id as 'all' | 'historical' | 'demo' | 'live')}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                    isSelected
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  {src.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Telemetry Badge */}
@@ -402,13 +450,17 @@ export default function TacticalMap({
           <Compass className="w-3.5 h-3.5 text-blue-600" />
           <span>GRID 23.68N / 90.35E (DHAKA)</span>
           <span className="text-slate-300">|</span>
-          {isLiveMode ? (
+          {hasLiveRecord ? (
             <span className="text-emerald-700 font-bold flex items-center gap-1">
-              <Radio className="w-3 h-3 animate-pulse text-emerald-600" /> LIVE GRID ({filteredMarkers.length} ACTIVE)
+              <Radio className="w-3 h-3 animate-pulse text-emerald-600" /> LIVE GRID ({filteredMarkers.length})
+            </span>
+          ) : hasHistoricalOnly ? (
+            <span className="text-blue-700 font-bold flex items-center gap-1">
+              <BookOpen className="w-3 h-3 text-blue-600" /> HISTORICAL ARCHIVE ({filteredMarkers.length})
             </span>
           ) : (
             <span className="text-amber-700 font-bold flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3 text-amber-600" /> DEMO SIMULATION
+              <AlertTriangle className="w-3 h-3 text-amber-600" /> DEMO SIMULATION ({filteredMarkers.length})
             </span>
           )}
         </div>
@@ -478,12 +530,10 @@ export default function TacticalMap({
               <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-md max-w-sm pointer-events-auto">
                 <Compass className="w-8 h-8 text-blue-600 mx-auto mb-2" />
                 <h4 className="text-sm font-bold text-slate-900">
-                  {isLiveMode ? 'No Live Incidents in View' : 'No Markers Available'}
+                  No Incidents in Current View
                 </h4>
                 <p className="text-xs text-slate-500 mt-1">
-                  {isLiveMode
-                    ? 'No active records match the current filter in the tactical grid.'
-                    : 'Try selecting a different filter above.'}
+                  No records match the current filter criteria ({activeFilter} / {sourceFilter}). Try switching source or hazard filters.
                 </p>
               </div>
             </div>
@@ -493,26 +543,49 @@ export default function TacticalMap({
 
       {/* Right-Hand Inspection Drawer */}
       <div className="w-full xl:w-96 border-t xl:border-t-0 xl:border-l border-slate-200 bg-white flex flex-col justify-between p-6 overflow-y-auto text-slate-900">
-        {!isLiveMode ? (
-          <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+        {selectedMarker?.dataSource === 'historical' ? (
+          <div className="mb-4 p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-start space-x-2.5">
+            <BookOpen className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold block">Development Demo Telemetry</span>
-              <span className="text-[11px] text-amber-700">Displaying offline sample markers for testing.</span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold">Verified Historical Record</span>
+                <DataSourceBadge source="historical" />
+              </div>
+              <span className="text-[11px] text-blue-700 block mt-0.5">
+                Official Bangladesh disaster record compiled from verified institutional archives.
+              </span>
+            </div>
+          </div>
+        ) : selectedMarker?.isDemo || selectedMarker?.dataSource === 'demo' ? (
+          <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start space-x-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold">Table-Top Training Simulation</span>
+                <DataSourceBadge source="demo" />
+              </div>
+              <span className="text-[11px] text-amber-700 block mt-0.5">
+                Synthetic operational drill data. Not an active emergency or live sensor stream.
+              </span>
             </div>
           </div>
         ) : (
           <div className="mb-4 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center space-x-2 font-mono">
             <Radio className="w-4 h-4 text-emerald-600 shrink-0 animate-pulse" />
-            <span className="font-bold">VERIFIED LIVE STREAM</span>
+            <span className="font-bold">LIVE TELEMETRY STREAM</span>
+            <DataSourceBadge source="live" />
           </div>
         )}
+
         {selectedMarker ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold uppercase">
-                {selectedMarker.id} • {selectedMarker.type.toUpperCase()}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold uppercase">
+                  {selectedMarker.id} • {selectedMarker.type.toUpperCase()}
+                </span>
+                <DataSourceBadge source={selectedMarker.dataSource || (selectedMarker.isDemo ? 'demo' : 'historical')} />
+              </div>
               <span
                 className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${
                   selectedMarker.severity === 'CRITICAL'
@@ -550,9 +623,52 @@ export default function TacticalMap({
               <p className="text-xs text-slate-600 leading-relaxed pt-1">{selectedMarker.details}</p>
             </div>
 
+            {/* Institutional Source Citation block if available */}
+            {selectedMarker.citation && (
+              <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between text-blue-950 font-bold">
+                  <span className="flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Official Institutional Citation</span>
+                  </span>
+                  {selectedMarker.citation.documentedYear && (
+                    <span className="font-mono text-[10px] bg-blue-100 px-1.5 py-0.5 rounded text-blue-800">
+                      {selectedMarker.citation.documentedYear}
+                    </span>
+                  )}
+                </div>
+                <p className="text-slate-700 text-[11px] font-semibold">
+                  {selectedMarker.citation.sourceName}
+                </p>
+                {selectedMarker.citation.verificationNotes && (
+                  <p className="text-slate-500 text-[10px] italic">
+                    {selectedMarker.citation.verificationNotes}
+                  </p>
+                )}
+                {selectedMarker.citation.sourceUrl && (
+                  <a
+                    href={selectedMarker.citation.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-bold underline decoration-blue-300 pt-0.5"
+                  >
+                    <span>View Primary Documentation</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Readout metric */}
             {selectedMarker.metric && (
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                <span className="text-slate-500 block text-[10px] font-mono font-bold uppercase tracking-wider">LIVE TELEMETRY READOUT</span>
+                <span className="text-slate-500 block text-[10px] font-mono font-bold uppercase tracking-wider">
+                  {selectedMarker.dataSource === 'historical'
+                    ? 'HISTORICAL EVENT BENCHMARK'
+                    : selectedMarker.isDemo || selectedMarker.dataSource === 'demo'
+                    ? 'SIMULATION DRILL METRIC'
+                    : 'LIVE SENSOR READOUT'}
+                </span>
                 <span className="text-slate-900 font-extrabold font-mono text-xs">{selectedMarker.metric}</span>
               </div>
             )}

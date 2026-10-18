@@ -1,6 +1,22 @@
 import { User, UserRole } from './types';
 
 export const DEMO_USERS: Record<string, User> = {
+  super_admin: {
+    id: 'usr-superadmin-00',
+    name: 'Maj. Gen. Sajjadul Islam',
+    displayName: 'Maj. Gen. Sajjadul Islam (Super Admin)',
+    email: 'superadmin@relief.ai',
+    role: 'super_admin',
+    isEmailVerified: true,
+    status: 'approved',
+    badgeNumber: 'BD-SADM-0001',
+    organization: 'National Disaster Management Crisis Authority (NDMCA)',
+    phone: '+880 1711-998877',
+    skills: ['Strategic Command', 'Armed Forces Joint Coordination', 'National Defense Triage'],
+    assignedZone: 'National Strategic Command Center (Dhaka EOC)',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
   admin: {
     id: 'usr-admin-01',
     name: 'Cmdr. Elena Vance',
@@ -85,14 +101,15 @@ export const DEMO_USERS: Record<string, User> = {
     createdAt: '2026-01-01T00:00:00.000Z',
   },
   volunteer: {
-    id: 'usr-volunteer-03',
-    name: 'Chloe Dubois',
-    displayName: 'Chloe Dubois',
+    id: 'usr-volunteer-06',
+    name: 'Tahmina Akter',
+    displayName: 'Tahmina Akter (Volunteer Lead)',
     role: 'volunteer',
     isEmailVerified: true,
-    email: 'chloe.dubois@humanitarian.org',
-    organization: 'Red Cross Logistics & Shelter Alliance',
-    phone: '+1 (555) 441-2099',
+    status: 'approved',
+    email: 'volunteer@relief.ai',
+    organization: 'Bangladesh Red Crescent Youth Volunteers (BDRCS)',
+    phone: '+880 1715-443322',
     skills: ['Shelter Intake Logistics', 'Bilingual (English/Spanish)', 'First Aid / CPR Certified'],
     location: {
       name: 'Cascadia Civic Arena Shelter',

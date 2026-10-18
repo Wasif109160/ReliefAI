@@ -2,8 +2,16 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { AIService } from '@/lib/ai/ai-service';
 import { securityUtils, getClientIp } from '@/lib/server/security';
+import { requireAuth } from '@/lib/server/rbac';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 export async function GET(req: Request) {
+  const auth = await requireAuth(['admin', 'government', 'rescue_team', 'commander', 'responder', 'ngo']);
+  if (!auth.authenticated || !auth.user) {
+    return auth.errorResponse!;
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const priority = searchParams.get('priority');
@@ -19,12 +27,18 @@ export async function GET(req: Request) {
 
     return NextResponse.json(requests);
   } catch (err) {
+    if (isDatabaseUnavailableError(err)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Error fetching SOS requests:', err);
     return NextResponse.json({ error: 'Failed to fetch SOS requests' }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/sos');
+  if (showcaseBlock) return showcaseBlock;
+
   // Rate limiting: max 10 SOS submissions per 60s per client IP
   const clientIp = getClientIp(req);
   const rateLimit = await securityUtils.checkPublicRateLimit(clientIp, 'POST_SOS', 10, 60 * 1000);
@@ -83,6 +97,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ sos: newSOS, aiAnalysis }, { status: 201 });
   } catch (err) {
+    if (isDatabaseUnavailableError(err)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Error creating SOS:', err);
     return NextResponse.json({ error: 'Failed to process SOS request' }, { status: 500 });
   }

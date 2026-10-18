@@ -3,18 +3,31 @@ import { requireAuth } from '@/lib/server/rbac';
 import { authDb } from '@/lib/server/auth-db';
 import { emailService } from '@/lib/server/email-service';
 import { securityUtils } from '@/lib/server/security';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/admin/ngo-applications/review');
+  if (showcaseBlock) return showcaseBlock;
+
   const auth = await requireAuth(['admin']);
   if (!auth.authenticated || !auth.user) {
     return auth.errorResponse!;
   }
 
   const { id } = await params;
-  const application = await authDb.findNGOApplicationById(id);
+  let application;
+  try {
+    application = await authDb.findNGOApplicationById(id);
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
+    return NextResponse.json({ error: 'Failed to find application' }, { status: 500 });
+  }
 
   if (!application) {
     return NextResponse.json({ error: 'Application not found' }, { status: 404 });
@@ -92,6 +105,9 @@ export async function POST(
       });
     }
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Review NGO application error:', error);
     return NextResponse.json({ error: 'Failed to review application' }, { status: 500 });
   }

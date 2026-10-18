@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/server/rbac';
 import { authDb } from '@/lib/server/auth-db';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 export async function GET(req: Request) {
   const auth = await requireAuth(['admin']);
@@ -8,9 +9,16 @@ export async function GET(req: Request) {
     return auth.errorResponse!;
   }
 
-  const url = new URL(req.url);
-  const status = url.searchParams.get('status') as 'pending' | 'approved' | 'rejected' | null;
+  try {
+    const url = new URL(req.url);
+    const status = url.searchParams.get('status') as 'pending' | 'approved' | 'rejected' | null;
 
-  const applications = await authDb.listNGOApplications(status || undefined);
-  return NextResponse.json({ success: true, applications });
+    const applications = await authDb.listNGOApplications(status || undefined);
+    return NextResponse.json({ success: true, applications });
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
+    return NextResponse.json({ error: 'Failed to list applications' }, { status: 500 });
+  }
 }

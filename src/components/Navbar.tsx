@@ -22,9 +22,11 @@ import {
   Waves,
   HeartHandshake,
   AlertOctagon,
+  Database,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import NotificationBell from './notifications/NotificationBell';
+import { DemoModeBanner } from './ui/demo-mode-indicator';
 
 interface NavLinkItem {
   href: string;
@@ -48,8 +50,11 @@ export default function Navbar() {
         return { href: '/dashboard/government', label: 'Civil Defense', icon: Building2 };
       case 'ngo':
         return { href: '/dashboard/ngo', label: 'NGO Logistics', icon: Truck };
-      case 'rescue_team':
+      case 'commander':
+        return { href: '/command', label: 'ICS Command', icon: Flame };
       case 'volunteer':
+        return { href: '/dashboard/volunteer', label: 'Volunteer Deck', icon: Activity };
+      case 'rescue_team':
       case 'responder':
         return { href: '/dashboard/rescue', label: 'Rescue Ops', icon: Flame };
       case 'citizen':
@@ -60,9 +65,10 @@ export default function Navbar() {
 
   const currentDashboard = getRoleDashboard(role);
 
-  // All 7 primary navigation links + dynamic role dashboard
+  // All primary navigation links + dynamic role dashboard
   const navLinks: NavLinkItem[] = [
     { href: '/map', label: 'Tactical Map', icon: MapPin },
+    { href: '/disasters', label: 'Disaster Archive', icon: Database },
     { href: '/shelters', label: 'Shelters', icon: Home },
     { href: '/environment', label: 'River Watch', icon: Waves },
     { href: '/ai-copilot', label: 'AI Copilot', icon: Bot, badge: 'AI' },
@@ -146,6 +152,9 @@ export default function Navbar() {
 
           {/* Right Action Bar */}
           <div className="flex items-center space-x-2.5">
+            {/* Global Demo Mode Pill */}
+            <DemoModeBanner compact className="hidden xl:inline-flex" />
+
             {/* SOS Dispatch Action Button */}
             <Link
               href="/sos"

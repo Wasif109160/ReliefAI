@@ -2,10 +2,15 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyAccessToken, verifyRefreshToken, TokenPayload } from './lib/server/jwt';
 import { COOKIE_ACCESS_TOKEN, COOKIE_REFRESH_TOKEN } from './lib/server/cookies';
+import { isShowcaseMutationBlocked } from './lib/server/demo-policy';
 
 const ROLE_DASHBOARDS: Record<string, string> = {
+  super_admin: '/dashboard/admin',
   citizen: '/dashboard/citizen',
   rescue_team: '/dashboard/rescue',
+  responder: '/dashboard/rescue',
+  commander: '/command',
+  volunteer: '/dashboard/volunteer',
   ngo: '/dashboard/ngo',
   government: '/dashboard/government',
   admin: '/dashboard/admin',
@@ -13,11 +18,13 @@ const ROLE_DASHBOARDS: Record<string, string> = {
 
 // Route permission requirements
 const PROTECTED_ROUTE_ROLES: { prefix: string; roles: string[] }[] = [
-  { prefix: '/dashboard/citizen', roles: ['citizen', 'admin'] },
-  { prefix: '/dashboard/rescue', roles: ['rescue_team', 'admin'] },
-  { prefix: '/dashboard/ngo', roles: ['ngo', 'admin'] },
-  { prefix: '/dashboard/government', roles: ['government', 'admin'] },
-  { prefix: '/dashboard/admin', roles: ['admin'] },
+  { prefix: '/dashboard/citizen', roles: ['citizen', 'admin', 'super_admin'] },
+  { prefix: '/dashboard/rescue', roles: ['rescue_team', 'commander', 'responder', 'admin', 'super_admin'] },
+  { prefix: '/dashboard/ngo', roles: ['ngo', 'admin', 'super_admin'] },
+  { prefix: '/dashboard/government', roles: ['government', 'admin', 'super_admin'] },
+  { prefix: '/dashboard/admin', roles: ['admin', 'super_admin'] },
+  { prefix: '/dashboard/volunteer', roles: ['volunteer', 'admin', 'super_admin'] },
+  { prefix: '/command', roles: ['super_admin', 'admin', 'government', 'commander', 'rescue_team'] },
 ];
 
 export async function middleware(request: NextRequest) {
@@ -63,9 +70,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(target, request.url));
   }
 
-  // 4. Role-based Dashboard Route Protection
+  // 4. Role-based Dashboard & Command Route Protection
+  let matchedProtection = false;
   for (const { prefix, roles } of PROTECTED_ROUTE_ROLES) {
     if (pathname.startsWith(prefix)) {
+      matchedProtection = true;
       if (!isAuthenticated) {
         const loginUrl = new URL('/auth/login', request.url);
         loginUrl.searchParams.set('redirect', pathname);
@@ -77,6 +86,16 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/403', request.url));
       }
     }
+  }
+
+  // Deny-by-default for any other dashboard path
+  if (!matchedProtection && (pathname.startsWith('/dashboard/') || pathname.startsWith('/command'))) {
+    if (!isAuthenticated) {
+      const loginUrl = new URL('/auth/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    return NextResponse.redirect(new URL('/403', request.url));
   }
 
   // 5. Generic Authenticated Pages (/profile, /settings)
@@ -93,9 +112,18 @@ export async function middleware(request: NextRequest) {
     if (!isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
-    if (userPayload?.role !== 'admin') {
+    if (userPayload?.role !== 'admin' && userPayload?.role !== 'super_admin') {
       return NextResponse.json({ error: 'Forbidden: Admin access required', code: 'FORBIDDEN' }, { status: 403 });
     }
+  }
+
+  // 7. Showcase Mode Mutation Protection (Blocks credential tampering during evaluations)
+  const showcaseCheck = isShowcaseMutationBlocked(pathname, request.method);
+  if (showcaseCheck.blocked) {
+    return NextResponse.json(
+      { error: showcaseCheck.reason, code: 'SHOWCASE_MUTATION_RESTRICTED' },
+      { status: 403 }
+    );
   }
 
   // Attach user headers for downstream server components if available
@@ -112,10 +140,12 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/dashboard/:path*',
+    '/command',
+    '/command/:path*',
     '/profile/:path*',
     '/settings/:path*',
     '/auth/login',
     '/auth/register',
-    '/api/admin/:path*',
+    '/api/:path*',
   ],
 };

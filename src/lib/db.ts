@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import {
   DisasterIncident,
   SOSRequest,
@@ -6,7 +7,12 @@ import {
   ResponderTeam,
   AidDonation,
 } from './types';
-import { connectToDatabase, isMongoConfigured } from './mongodb';
+import {
+  connectToDatabase,
+  isMongoConfigured,
+  DatabaseUnavailableError,
+  isDatabaseUnavailableError,
+} from './mongodb';
 import {
   DisasterModel,
   SOSRequestModel,
@@ -16,89 +22,10 @@ import {
   DonationModel,
 } from './models';
 
-// Seed initial Bangladesh data
-export const initialDisasters: DisasterIncident[] = [
-  {
-    id: 'dis-001',
-    title: 'Surma-Kushiyara Basin Severe Inundation (সিলেট-সুনামগঞ্জ বন্যা)',
-    type: 'flood',
-    severity: 'critical',
-    status: 'active',
-    location: {
-      name: 'Sylhet & Sunamganj Riverine Lowlands',
-      lat: 24.8949,
-      lng: 91.8687,
-      radiusKm: 42.0,
-    },
-    affectedPopulation: 640000,
-    casualtiesReported: 14,
-    respondersDeployed: 240,
-    reportedAt: new Date(Date.now() - 6 * 3600000).toISOString(),
-    description: 'Surma & Kushiyara rivers surging 1.42m above danger level. 8 upazilas submerged including Gowainghat and Companiganj; 1,200 schools converted to shelters.',
-    recommendedEvacuationRadiusKm: 25,
-    activeHazards: ['Submerged Power Grid & Electrocution Risk', 'Flash Current > 5.2 knots', 'Waterborne Cholera / Diarrhea Outbreak Threat'],
-  },
-  {
-    id: 'dis-002',
-    title: 'Bay of Bengal Super Cyclone Threat (মহাবিপদ সংকেত ১০)',
-    type: 'hurricane',
-    severity: 'critical',
-    status: 'active',
-    location: {
-      name: "Chittagong-Cox's Bazar Coastal Arc & Kutubdia",
-      lat: 21.4272,
-      lng: 91.9702,
-      radiusKm: 85.0,
-    },
-    affectedPopulation: 1450000,
-    casualtiesReported: 3,
-    respondersDeployed: 480,
-    reportedAt: new Date(Date.now() - 14 * 3600000).toISOString(),
-    description: 'Category 4 equivalent tropical cyclone approaching southeast coast. Storm surge predicted 12-16 feet above normal astronomical tide.',
-    recommendedEvacuationRadiusKm: 45,
-    activeHazards: ['16ft Tidal Surge Inundation', 'Coastal Embankment Breaches', 'Wind Gusts Exceeding 140 km/h'],
-  },
-  {
-    id: 'dis-003',
-    title: 'Old Dhaka Chemical Warehouse Hazard (চকবাজার জরুরি অগ্নিকাণ্ড)',
-    type: 'industrial',
-    severity: 'critical',
-    status: 'active',
-    location: {
-      name: 'Chawkbazar & Lalbagh Dense Corridor, Dhaka',
-      lat: 23.7150,
-      lng: 90.3950,
-      radiusKm: 3.5,
-    },
-    affectedPopulation: 58000,
-    casualtiesReported: 6,
-    respondersDeployed: 110,
-    reportedAt: new Date(Date.now() - 4 * 3600000).toISOString(),
-    description: 'Industrial chemical solvent explosion triggered multi-story fire in ultra-dense historic residential quarter. Narrow lanes impeding fire engine access.',
-    recommendedEvacuationRadiusKm: 2,
-    activeHazards: ['Toxic Solvent Fumes (Benzene / Acetone)', 'Structural Collapse of Century-Old Brickwork', 'Gas Line Secondary Explosions'],
-  },
-  {
-    id: 'dis-004',
-    title: 'Jamuna River Erosion & Embankment Breach (চিলমারী নদীভাঙন)',
-    type: 'flood',
-    severity: 'high',
-    status: 'active',
-    location: {
-      name: 'Chilmari & Roumari Upazila, Kurigram',
-      lat: 25.8073,
-      lng: 89.6369,
-      radiusKm: 22.0,
-    },
-    affectedPopulation: 85000,
-    casualtiesReported: 1,
-    respondersDeployed: 65,
-    reportedAt: new Date(Date.now() - 18 * 3600000).toISOString(),
-    description: 'Jamuna river severe bank failure washing away 320 homesteads within 48 hours. Flood protection dam breached over 150-meter section.',
-    recommendedEvacuationRadiusKm: 12,
-    activeHazards: ['Rapid Bank Cavitation', 'Loss of Agricultural Land & Livestock', 'Zero Road Connectivity to Char Islands'],
-  },
-];
+import { ALL_COMBINED_DISASTERS } from './data/historical-disasters';
+
+// Seed initial Bangladesh data with verified historical archives and labeled demo drills
+export const initialDisasters: DisasterIncident[] = ALL_COMBINED_DISASTERS;
 
 export const initialSOSRequests: SOSRequest[] = [
   {
@@ -472,7 +399,12 @@ const dbInstance: ReliefDatabase = {
 
 let hasInitializedMongo = false;
 async function initDb() {
-  if (hasInitializedMongo) return;
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction && !isMongoConfigured()) {
+    throw new DatabaseUnavailableError('FATAL: MONGODB_URI is required and cannot be empty in production.');
+  }
+
+  if (hasInitializedMongo && mongoose.connection.readyState === 1) return;
   if (isMongoConfigured()) {
     try {
       const conn = await connectToDatabase();
@@ -482,6 +414,11 @@ async function initDb() {
         await seedMongoIfEmpty();
       }
     } catch (e) {
+      if (isProduction) {
+        throw isDatabaseUnavailableError(e)
+          ? e
+          : new DatabaseUnavailableError('Failed to establish database connection in production.');
+      }
       console.warn('[ReliefAI DB] MongoDB connection skipped, running in-memory fallback:', e);
     }
   }
@@ -491,6 +428,7 @@ export const db = {
   // Disasters
   async getDisasters(): Promise<DisasterIncident[]> {
     await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     if (isMongoConfigured()) {
       try {
         const items = await DisasterModel.find().lean();
@@ -501,30 +439,60 @@ export const db = {
             _id: undefined,
           })) as DisasterIncident[];
         }
+        if (isProduction) return [];
       } catch (err) {
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while fetching disasters.');
+        }
         console.warn('Mongo read disasters failed, using in-memory store:', err);
       }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
     return [...dbInstance.disasters];
   },
 
   async getDisaster(id: string): Promise<DisasterIncident | undefined> {
     await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     if (isMongoConfigured()) {
       try {
         const item = await DisasterModel.findOne({ id }).lean();
         if (item) return { ...item, id: (item as any).id, _id: undefined } as DisasterIncident;
-      } catch {}
+        if (isProduction) return undefined;
+      } catch (err) {
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while fetching disaster.');
+        }
+      }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
     return dbInstance.disasters.find((d) => d.id === id);
   },
 
   async createDisaster(item: Omit<DisasterIncident, 'id' | 'reportedAt'>): Promise<DisasterIncident> {
+    await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     const newDisaster: DisasterIncident = {
       ...item,
       id: `dis-${Date.now()}`,
       reportedAt: new Date().toISOString(),
     };
+
+    if (isProduction) {
+      if (!isMongoConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        await connectToDatabase();
+        await DisasterModel.create(newDisaster);
+        return newDisaster;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while creating disaster.');
+      }
+    }
+
     dbInstance.disasters.unshift(newDisaster);
     if (isMongoConfigured()) {
       try {
@@ -540,6 +508,7 @@ export const db = {
   // SOS Requests
   async getSOSRequests(): Promise<SOSRequest[]> {
     await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     if (isMongoConfigured()) {
       try {
         const items = await SOSRequestModel.find().sort({ createdAt: -1 }).lean();
@@ -550,31 +519,61 @@ export const db = {
             _id: undefined,
           })) as SOSRequest[];
         }
+        if (isProduction) return [];
       } catch (err) {
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while fetching SOS requests.');
+        }
         console.warn('Mongo read SOS failed, using in-memory store:', err);
       }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
     return [...dbInstance.sosRequests];
   },
 
   async getSOS(id: string): Promise<SOSRequest | undefined> {
     await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     if (isMongoConfigured()) {
       try {
         const item = await SOSRequestModel.findOne({ id }).lean();
         if (item) return { ...item, id: (item as any).id, _id: undefined } as SOSRequest;
-      } catch {}
+        if (isProduction) return undefined;
+      } catch (err) {
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while fetching SOS request.');
+        }
+      }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
     return dbInstance.sosRequests.find((s) => s.id === id);
   },
 
   async createSOS(item: Omit<SOSRequest, 'id' | 'createdAt' | 'status'>): Promise<SOSRequest> {
+    await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     const newSOS: SOSRequest = {
       ...item,
       id: `sos-${Date.now()}`,
       status: 'pending',
       createdAt: new Date().toISOString(),
     };
+
+    if (isProduction) {
+      if (!isMongoConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        await connectToDatabase();
+        await SOSRequestModel.create(newSOS);
+        return newSOS;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while creating SOS request.');
+      }
+    }
+
     dbInstance.sosRequests.unshift(newSOS);
     if (isMongoConfigured()) {
       try {
@@ -593,25 +592,44 @@ export const db = {
     teamId?: string,
     teamName?: string
   ): Promise<SOSRequest | undefined> {
+    await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
+    const updates: any = { status };
+    if (teamId) updates.assignedTeamId = teamId;
+    if (teamName) updates.assignedTeamName = teamName;
+    if (status === 'dispatched') {
+      updates.dispatchEtaMinutes = Math.floor(Math.random() * 12) + 5;
+    }
+
+    if (isProduction) {
+      if (!isMongoConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        await connectToDatabase();
+        const updated = await SOSRequestModel.findOneAndUpdate({ id }, updates, { new: true }).lean();
+        if (updated) {
+          return { ...updated, id: (updated as any).id, _id: undefined } as SOSRequest;
+        }
+        return undefined;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while updating SOS status.');
+      }
+    }
+
     const req = dbInstance.sosRequests.find((s) => s.id === id);
     if (req) {
       req.status = status;
       if (teamId) req.assignedTeamId = teamId;
       if (teamName) req.assignedTeamName = teamName;
       if (status === 'dispatched' && !req.dispatchEtaMinutes) {
-        req.dispatchEtaMinutes = Math.floor(Math.random() * 12) + 5;
+        req.dispatchEtaMinutes = updates.dispatchEtaMinutes;
       }
     }
 
     if (isMongoConfigured()) {
       try {
         await connectToDatabase();
-        const updates: any = { status };
-        if (teamId) updates.assignedTeamId = teamId;
-        if (teamName) updates.assignedTeamName = teamName;
-        if (status === 'dispatched' && req?.dispatchEtaMinutes) {
-          updates.dispatchEtaMinutes = req.dispatchEtaMinutes;
-        }
         const updated = await SOSRequestModel.findOneAndUpdate({ id }, updates, { new: true }).lean();
         if (updated) {
           return { ...updated, id: (updated as any).id, _id: undefined } as SOSRequest;
@@ -626,6 +644,7 @@ export const db = {
   // Shelters
   async getShelters(): Promise<Shelter[]> {
     await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     if (isMongoConfigured()) {
       try {
         const items = await ShelterModel.find().lean();
@@ -636,25 +655,69 @@ export const db = {
             _id: undefined,
           })) as Shelter[];
         }
+        if (isProduction) return [];
       } catch (err) {
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while fetching shelters.');
+        }
         console.warn('Mongo read shelters failed:', err);
       }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
     return [...dbInstance.shelters];
   },
 
   async getShelter(id: string): Promise<Shelter | undefined> {
     await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     if (isMongoConfigured()) {
       try {
         const item = await ShelterModel.findOne({ id }).lean();
         if (item) return { ...item, id: (item as any).id, _id: undefined } as Shelter;
-      } catch {}
+        if (isProduction) return undefined;
+      } catch (err) {
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while fetching shelter.');
+        }
+      }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
     return dbInstance.shelters.find((s) => s.id === id);
   },
 
   async updateShelterOccupancy(id: string, newOccupancy: number): Promise<Shelter | undefined> {
+    await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction) {
+      if (!isMongoConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        await connectToDatabase();
+        const existing = await ShelterModel.findOne({ id });
+        if (!existing) return undefined;
+        const clamped = Math.max(0, Math.min(newOccupancy, existing.capacity));
+        let status: Shelter['status'] = 'open';
+        if (clamped >= existing.capacity) status = 'full';
+        else if (clamped >= existing.capacity * 0.9) status = 'nearing_capacity';
+
+        const updated = await ShelterModel.findOneAndUpdate(
+          { id },
+          { currentOccupancy: clamped, status },
+          { new: true }
+        ).lean();
+        if (updated) {
+          return { ...updated, id: (updated as any).id, _id: undefined } as Shelter;
+        }
+        return undefined;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while updating shelter.');
+      }
+    }
+
     const s = dbInstance.shelters.find((shelter) => shelter.id === id);
     if (!s) return undefined;
     s.currentOccupancy = Math.max(0, Math.min(newOccupancy, s.capacity));
@@ -687,6 +750,7 @@ export const db = {
   // Supplies
   async getSupplies(): Promise<SupplyItem[]> {
     await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     if (isMongoConfigured()) {
       try {
         const items = await SupplyModel.find().lean();
@@ -697,14 +761,43 @@ export const db = {
             _id: undefined,
           })) as SupplyItem[];
         }
+        if (isProduction) return [];
       } catch (err) {
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while fetching supplies.');
+        }
         console.warn('Mongo read supplies failed:', err);
       }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
     return [...dbInstance.supplies];
   },
 
   async dispatchSupply(id: string, qty: number): Promise<SupplyItem | undefined> {
+    await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction) {
+      if (!isMongoConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        await connectToDatabase();
+        const item = await SupplyModel.findOne({ id });
+        if (!item) return undefined;
+        item.allocated += qty;
+        item.quantity = Math.max(0, item.quantity - qty);
+        if (item.quantity <= 0) item.status = 'critical';
+        else if (item.quantity < item.threshold) item.status = 'low';
+        await item.save();
+        const updated = item.toObject();
+        return { ...updated, id: updated.id, _id: undefined } as SupplyItem;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while dispatching supply.');
+      }
+    }
+
     const item = dbInstance.supplies.find((sup) => sup.id === id);
     if (!item) return undefined;
     item.allocated += qty;
@@ -734,6 +827,27 @@ export const db = {
   },
 
   async restockSupply(id: string, qty: number): Promise<SupplyItem | undefined> {
+    await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction) {
+      if (!isMongoConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        await connectToDatabase();
+        const item = await SupplyModel.findOne({ id });
+        if (!item) return undefined;
+        item.quantity += qty;
+        if (item.quantity >= item.threshold) item.status = 'adequate';
+        await item.save();
+        const updated = item.toObject();
+        return { ...updated, id: updated.id, _id: undefined } as SupplyItem;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while restocking supply.');
+      }
+    }
+
     const item = dbInstance.supplies.find((sup) => sup.id === id);
     if (!item) return undefined;
     item.quantity += qty;
@@ -762,6 +876,7 @@ export const db = {
   // Responders
   async getResponders(): Promise<ResponderTeam[]> {
     await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     if (isMongoConfigured()) {
       try {
         const items = await ResponderModel.find().lean();
@@ -772,31 +887,74 @@ export const db = {
             _id: undefined,
           })) as ResponderTeam[];
         }
+        if (isProduction) return [];
       } catch (err) {
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while fetching responders.');
+        }
         console.warn('Mongo read responders failed:', err);
       }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
     return [...dbInstance.responders];
   },
 
   async getResponder(id: string): Promise<ResponderTeam | undefined> {
     await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     if (isMongoConfigured()) {
       try {
         const item = await ResponderModel.findOne({ id }).lean();
         if (item) return { ...item, id: (item as any).id, _id: undefined } as ResponderTeam;
-      } catch {}
+        if (isProduction) return undefined;
+      } catch (err) {
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while fetching responder.');
+        }
+      }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
     return dbInstance.responders.find((r) => r.id === id);
   },
 
   async dispatchResponder(teamId: string, incidentId: string, sosId?: string): Promise<ResponderTeam | undefined> {
+    await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
+    const lastCheckIn = new Date().toISOString();
+
+    if (isProduction) {
+      if (!isMongoConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        await connectToDatabase();
+        const updated = await ResponderModel.findOneAndUpdate(
+          { id: teamId },
+          {
+            status: 'dispatched',
+            currentIncidentId: incidentId,
+            assignedSOSId: sosId,
+            lastCheckIn,
+          },
+          { new: true }
+        ).lean();
+        if (updated) {
+          return { ...updated, id: (updated as any).id, _id: undefined } as ResponderTeam;
+        }
+        return undefined;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while dispatching responder.');
+      }
+    }
+
     const team = dbInstance.responders.find((r) => r.id === teamId);
     if (!team) return undefined;
     team.status = 'dispatched';
     team.currentIncidentId = incidentId;
     team.assignedSOSId = sosId;
-    team.lastCheckIn = new Date().toISOString();
+    team.lastCheckIn = lastCheckIn;
 
     if (isMongoConfigured()) {
       try {
@@ -807,7 +965,7 @@ export const db = {
             status: 'dispatched',
             currentIncidentId: incidentId,
             assignedSOSId: sosId,
-            lastCheckIn: team.lastCheckIn,
+            lastCheckIn,
           },
           { new: true }
         ).lean();
@@ -822,10 +980,34 @@ export const db = {
   },
 
   async updateResponderStatus(teamId: string, status: ResponderTeam['status']): Promise<ResponderTeam | undefined> {
+    await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
+    const lastCheckIn = new Date().toISOString();
+
+    if (isProduction) {
+      if (!isMongoConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        await connectToDatabase();
+        const updated = await ResponderModel.findOneAndUpdate(
+          { id: teamId },
+          { status, lastCheckIn },
+          { new: true }
+        ).lean();
+        if (updated) {
+          return { ...updated, id: (updated as any).id, _id: undefined } as ResponderTeam;
+        }
+        return undefined;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while updating responder status.');
+      }
+    }
+
     const team = dbInstance.responders.find((r) => r.id === teamId);
     if (!team) return undefined;
     team.status = status;
-    team.lastCheckIn = new Date().toISOString();
+    team.lastCheckIn = lastCheckIn;
 
     if (isMongoConfigured()) {
       try {
@@ -848,6 +1030,7 @@ export const db = {
   // Donations
   async getDonations(): Promise<AidDonation[]> {
     await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     if (isMongoConfigured()) {
       try {
         const items = await DonationModel.find().sort({ timestamp: -1 }).lean();
@@ -858,20 +1041,42 @@ export const db = {
             _id: undefined,
           })) as AidDonation[];
         }
+        if (isProduction) return [];
       } catch (err) {
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while fetching donations.');
+        }
         console.warn('Mongo read donations failed:', err);
       }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
     return [...dbInstance.donations];
   },
 
   async createDonation(item: Omit<AidDonation, 'id' | 'timestamp' | 'txHash'>): Promise<AidDonation> {
+    await initDb();
+    const isProduction = process.env.NODE_ENV === 'production';
     const newDonation: AidDonation = {
       ...item,
       id: `don-${Date.now()}`,
       timestamp: new Date().toISOString(),
       txHash: `0x${Math.random().toString(16).substring(2, 6)}...${Math.random().toString(16).substring(2, 6)}`,
     };
+
+    if (isProduction) {
+      if (!isMongoConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        await connectToDatabase();
+        await DonationModel.create(newDonation);
+        return newDonation;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while creating donation.');
+      }
+    }
+
     dbInstance.donations.unshift(newDonation);
     if (isMongoConfigured()) {
       try {

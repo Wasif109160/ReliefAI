@@ -3,12 +3,17 @@ import { z } from 'zod';
 import { authDb } from '@/lib/server/auth-db';
 import { emailService } from '@/lib/server/email-service';
 import { securityUtils } from '@/lib/server/security';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 const ForgotSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
 });
 
 export async function POST(req: Request) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/auth/forgot-password');
+  if (showcaseBlock) return showcaseBlock;
+
   try {
     const body = await req.json();
     const result = ForgotSchema.safeParse(body);
@@ -56,6 +61,9 @@ export async function POST(req: Request) {
       otpPreview: process.env.NODE_ENV !== 'production' ? otp : undefined,
     });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Forgot password error:', error);
     return NextResponse.json(
       { error: 'Failed to process password reset request' },

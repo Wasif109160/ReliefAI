@@ -27,8 +27,13 @@ export default function DashboardIndexPage() {
       case 'ngo':
         router.replace('/dashboard/ngo');
         break;
-      case 'rescue_team':
+      case 'commander':
+        router.replace('/command');
+        break;
       case 'volunteer':
+        router.replace('/dashboard/volunteer');
+        break;
+      case 'rescue_team':
       case 'responder':
         router.replace('/dashboard/rescue');
         break;

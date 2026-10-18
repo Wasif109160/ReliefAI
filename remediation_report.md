@@ -123,3 +123,47 @@ To transition from **CONDITIONAL GO** to **UNCONDITIONAL GO FOR PRODUCTION**:
 
 - **Phase 3 Status:** **NOT STARTED.**
 - Zero Phase 3 features, routes, or schema changes were touched or implemented. Strict Phase 2 production-readiness scope was maintained throughout this entire audit.
+
+---
+
+## 7. Autonomous MongoDB Atlas Production Diagnostics & Admin Bootstrap Audit
+
+- **Executed:** October 18, 2026
+- **Auditor / Roles:** Senior DevOps Engineer, Security Engineer, Backend Engineer, QA Lead
+- **Scope:** MongoDB Atlas Cluster0 Recovery, Network Access Diagnostics, and Admin Provisioning Security
+
+### A. Environment & Repository Hygiene
+- **Branch:** `fix/reliefai-production-readiness` (tracked to `origin/fix/reliefai-production-readiness`).
+- **Secrets Management:** Verified that `.env` and `.env.local` are strictly excluded from version control via `.gitignore` (`git check-ignore` verified). No credentials or secrets were committed or exposed.
+- **Precedence Verification:** Enhanced [scripts/verify-production-db.ts](file:///c:/Projects/ReliefAI/scripts/verify-production-db.ts) and [scripts/bootstrap-admin.ts](file:///c:/Projects/ReliefAI/scripts/bootstrap-admin.ts) to adhere strictly to Next.js environment precedence: `.env.local` automatically overrides `.env`.
+
+### B. MongoDB Atlas Diagnostic Probes (Autonomous Evidence)
+Diagnostic tool [scripts/diagnose-atlas.ts](file:///c:/Projects/ReliefAI/scripts/diagnose-atlas.ts) executed autonomously with the following verified results:
+
+| Layer Tested | Target | Actual Probe Result | Status |
+| :--- | :--- | :--- | :---: |
+| **Public Outbound IP** | Local Environment | `103.135.133.186` (via `api.ipify.org`) | **IDENTIFIED** |
+| **DNS SRV Resolution** | `_mongodb._tcp.cluster0.nco6w4z.mongodb.net` | Resolved to 3 nodes: `ac-fuesoji-shard-00-00`, `01`, `02` | **PASS** |
+| **DNS IPv4 Resolution** | Replica Set Shards | Resolved to `159.41.192.22`, `159.41.192.26`, `159.41.192.28` | **PASS** |
+| **TCP Socket (Port 27017)** | All 3 Replica Nodes | Successfully connected to all 3 hosts with 77ms–84ms latency | **PASS** |
+| **TLS/SSL Handshake** | `ac-fuesoji-shard-00-*.nco6w4z.mongodb.net:27017` | Terminated with `SSL alert number 80` (`tlsv1 alert internal error`) after 7-byte response from proxy | **FAIL (BLOCKED)** |
+| **Mongoose Connection** | `cluster0.nco6w4z.mongodb.net/reliefai` | `Could not connect to any servers in your MongoDB Atlas cluster` | **FAIL (BLOCKED)** |
+
+### C. Technical Root Cause & External Blocker
+1. **Root Cause Confirmed:** The cluster is active and reachable over TCP. On MongoDB Atlas shared/free clusters, the Atlas edge proxy accepts TCP connections from any IP, but terminates the TLS handshake with `TLS Alert 80` whenever the client IP is not present in the project's **IP Access List**.
+2. **External Blocker:** Atlas IP Access List management requires direct access to the MongoDB Atlas web console (`cloud.mongodb.com`). This permission cannot be executed via local shell commands without Atlas API keys.
+
+### D. Bootstrap Endpoint & Script Security Audit
+Audited [src/app/api/auth/bootstrap/route.ts](file:///c:/Projects/ReliefAI/src/app/api/auth/bootstrap/route.ts) and [scripts/bootstrap-admin.ts](file:///c:/Projects/ReliefAI/scripts/bootstrap-admin.ts):
+- **Constant-Time Verification:** Upgraded `constantTimeEquals` to calculate SHA-256 digests before `crypto.timingSafeEqual` comparison, eliminating buffer length timing leakage.
+- **Fail-Closed Database Invariant:** Added explicit `connectToDatabase()` validation to ensure the endpoint aborts with HTTP 503 if the persistent database is unreachable, preventing accidental in-memory fallback in production.
+- **Rate Limiting:** Enforced at 3 requests/minute per IP via centralized rate limiting.
+- **One-Time Lock:** Authoritative check against `authDb.hasAdminUser()`. If an admin account exists, returns HTTP 409 Conflict permanently.
+- **Password Hashing:** Passwords hashed with bcrypt (10 salt rounds) prior to storage.
+- **Sanitized Output:** Strips password hashes and session tokens from HTTP 201 responses.
+
+### E. Quality & Regression Verification
+- **TypeScript:** `npx tsc --noEmit` $\rightarrow$ **0 errors**.
+- **Security & RBAC Suite:** `npm test` $\rightarrow$ **20 / 20 passing**.
+- **ESLint:** `npm run lint` $\rightarrow$ **0 errors**, 64 warnings (baseline preserved).
+- **Production Build:** `npm run build` $\rightarrow$ **59 / 59 routes generated cleanly**.

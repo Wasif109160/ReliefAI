@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify, JWTPayload } from 'jose';
 import { UserRole } from '../types';
 
-function getAccessSecret(): Uint8Array {
+export function getAccessSecret(): Uint8Array {
   const secret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
   if (!secret) {
     if (process.env.NODE_ENV === 'production') {
@@ -15,7 +15,7 @@ function getAccessSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-function getRefreshSecret(): Uint8Array {
+export function getRefreshSecret(): Uint8Array {
   const secret = process.env.JWT_REFRESH_SECRET;
   if (!secret) {
     if (process.env.NODE_ENV === 'production') {
@@ -26,8 +26,13 @@ function getRefreshSecret(): Uint8Array {
   if (process.env.NODE_ENV === 'production' && secret.length < 32) {
     throw new Error('FATAL CONFIGURATION ERROR: JWT_REFRESH_SECRET must be at least 32 characters long in production.');
   }
+  const accessSecret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === 'production' && accessSecret && secret === accessSecret) {
+    throw new Error('FATAL CONFIGURATION ERROR: JWT_REFRESH_SECRET must be distinct from JWT_ACCESS_SECRET in production.');
+  }
   return new TextEncoder().encode(secret);
 }
+
 
 export interface TokenPayload extends JWTPayload {
   userId: string;

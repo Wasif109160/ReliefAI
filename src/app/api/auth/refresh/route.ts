@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { authDb } from '@/lib/server/auth-db';
 import { verifyRefreshToken, signAccessToken, signRefreshToken } from '@/lib/server/jwt';
 import { setAuthCookies, clearAuthCookies, COOKIE_REFRESH_TOKEN } from '@/lib/server/cookies';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 export async function POST() {
   try {
@@ -109,6 +110,12 @@ export async function POST() {
       refreshToken: newRefreshToken,
     });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json(
+        { error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' },
+        { status: 503 }
+      );
+    }
     console.error('Refresh token error:', error);
     const response = NextResponse.json(
       { error: 'Internal refresh token error', code: 'INTERNAL_ERROR' },

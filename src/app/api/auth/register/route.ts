@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { authDb } from '@/lib/server/auth-db';
 import { emailService } from '@/lib/server/email-service';
 import { securityUtils } from '@/lib/server/security';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 const RegisterSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -15,6 +17,9 @@ const RegisterSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/auth/register');
+  if (showcaseBlock) return showcaseBlock;
+
   try {
     const body = await req.json();
     const result = RegisterSchema.safeParse(body);
@@ -94,6 +99,9 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('Registration error:', error);
     return NextResponse.json(
       { error: 'Failed to complete registration. Please try again.' },

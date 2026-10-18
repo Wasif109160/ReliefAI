@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "tsx --test tests/security/auth-rbac.test.ts tests/security/showcase-demo.test.ts tests/security/production-fail-closed.test.ts",
+    "seed:users": "tsx scripts/seed-users.ts",
+    "bootstrap:admin": "tsx scripts/bootstrap-admin.ts",
+    "verify:db": "tsx scripts/verify-production-db.ts",
+    "diagnose:atlas": "tsx scripts/diagnose-atlas.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

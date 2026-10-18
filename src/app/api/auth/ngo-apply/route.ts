@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { authDb } from '@/lib/server/auth-db';
 import { emailService } from '@/lib/server/email-service';
+import { assertShowcaseMutation } from '@/lib/server/demo-policy';
+import { isDatabaseUnavailableError } from '@/lib/mongodb';
 
 const NGOApplySchema = z.object({
   organizationName: z.string().min(2, 'Organization name is required'),
@@ -18,6 +20,9 @@ const NGOApplySchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const showcaseBlock = assertShowcaseMutation(req, '/api/auth/ngo-apply');
+  if (showcaseBlock) return showcaseBlock;
+
   try {
     const body = await req.json();
     const result = NGOApplySchema.safeParse(body);
@@ -74,6 +79,9 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+    }
     console.error('NGO apply error:', error);
     return NextResponse.json(
       { error: 'Failed to submit NGO application. Please try again.' },
