@@ -304,7 +304,7 @@ Follow these required preparation and deployment steps:
 > 5. **External SMTP Delivery:** Transition from the in-memory development outbox to an enterprise SMTP provider (SendGrid, Postmark, AWS SES) for production email verification and password resets.
 
 ---
-
+LIVE LINK: https://relief-ai-azure.vercel.app/
 ## License
 
 This repository does not currently contain an open-source license file and is designated private in [`package.json`](./package.json). All rights are reserved until formal licensing terms are published by the project maintainers.
