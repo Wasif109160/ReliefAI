@@ -4,7 +4,7 @@
 [![React](https://img.shields.io/badge/React-19.3.0-blue?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas_%2F_Mongoose_9-47A248?style=flat-square&logo=mongodb)](https://www.mongodb.com/)
+
 [![Google Gemini](https://img.shields.io/badge/AI-Google_Gemini_1.5_Flash-orange?style=flat-square&logo=google)](https://ai.google.dev/)
 [![Security Audited](https://img.shields.io/badge/Security-RBAC_%26_Fail--Closed-green?style=flat-square)](./remediation_report.md)
 
