@@ -7,7 +7,7 @@ import { securityUtils } from '@/lib/server/security';
 import { UserRole } from '@/lib/types';
 import { db } from '@/lib/db';
 import { assertShowcaseMutation } from '@/lib/server/demo-policy';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 const ProvisionSchema = z.object({
   name: z.string().min(2, 'Full name is required'),

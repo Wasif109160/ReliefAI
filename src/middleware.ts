@@ -29,6 +29,47 @@ const PROTECTED_ROUTE_ROLES: { prefix: string; roles: string[] }[] = [
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const origin = request.headers.get('origin');
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const isOriginAllowed =
+    !origin ||
+    allowedOrigins.length === 0 ||
+    allowedOrigins.includes('*') ||
+    allowedOrigins.includes(origin);
+
+  const corsOrigin = isOriginAllowed ? (origin || '*') : allowedOrigins[0] || '*';
+
+  // 0. Handle CORS preflight for API requests
+  if (request.method === 'OPTIONS' && (pathname.startsWith('/api/') || pathname.startsWith('/health'))) {
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': corsOrigin,
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers':
+          'Content-Type, Authorization, X-Requested-With, Accept, X-User-Role, X-Mesh-Node-ID, X-Api-Version',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
+
+  // Helper to set CORS headers on API responses
+  const withCors = (res: NextResponse) => {
+    if (pathname.startsWith('/api/') || pathname.startsWith('/health')) {
+      res.headers.set('Access-Control-Allow-Origin', corsOrigin);
+      res.headers.set('Access-Control-Allow-Credentials', 'true');
+      res.headers.set(
+        'Access-Control-Allow-Headers',
+        'Content-Type, Authorization, X-Requested-With, Accept, X-User-Role, X-Mesh-Node-ID, X-Api-Version'
+      );
+    }
+    return res;
+  };
 
   // 1. Get tokens from cookies
   const accessToken = request.cookies.get(COOKIE_ACCESS_TOKEN)?.value;
@@ -110,19 +151,21 @@ export async function middleware(request: NextRequest) {
   // 6. Admin API Route Protection
   if (pathname.startsWith('/api/admin')) {
     if (!isAuthenticated) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+      return withCors(NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 }));
     }
     if (userPayload?.role !== 'admin' && userPayload?.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Forbidden: Admin access required', code: 'FORBIDDEN' }, { status: 403 });
+      return withCors(NextResponse.json({ error: 'Forbidden: Admin access required', code: 'FORBIDDEN' }, { status: 403 }));
     }
   }
 
   // 7. Showcase Mode Mutation Protection (Blocks credential tampering during evaluations)
   const showcaseCheck = isShowcaseMutationBlocked(pathname, request.method);
   if (showcaseCheck.blocked) {
-    return NextResponse.json(
-      { error: showcaseCheck.reason, code: 'SHOWCASE_MUTATION_RESTRICTED' },
-      { status: 403 }
+    return withCors(
+      NextResponse.json(
+        { error: showcaseCheck.reason, code: 'SHOWCASE_MUTATION_RESTRICTED' },
+        { status: 403 }
+      )
     );
   }
 
@@ -134,7 +177,7 @@ export async function middleware(request: NextRequest) {
     response.headers.set('x-user-email', userPayload.email);
   }
 
-  return response;
+  return withCors(response);
 }
 
 export const config = {

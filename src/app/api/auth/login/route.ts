@@ -8,7 +8,7 @@ import { setAuthCookies } from '@/lib/server/cookies';
 import { emailService } from '@/lib/server/email-service';
 import { securityUtils } from '@/lib/server/security';
 import { isDesignatedDemoEmail, isShowcaseMode, getDesignatedDemoRole } from '@/lib/server/demo-policy';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 const LoginSchema = z.object({
   email: z.string().email('Please provide a valid email address'),
@@ -187,6 +187,7 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     if (isDatabaseUnavailableError(error)) {
+      console.error('[ReliefAI Login API] Database service unavailable:', error instanceof Error ? error.message : error);
       return NextResponse.json(
         { error: 'Database service is currently unavailable. Please try again shortly.', code: 'DATABASE_UNAVAILABLE' },
         { status: 503 }

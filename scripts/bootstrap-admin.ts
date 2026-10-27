@@ -15,29 +15,32 @@
 
 import crypto from 'crypto';
 import fs from 'fs';
-import { connectToDatabase, isMongoConfigured } from '../src/lib/mongodb';
+import { prisma, isDatabaseConfigured, checkDatabaseHealth } from '../src/lib/prisma';
 import { authDb } from '../src/lib/server/auth-db';
 
 // Load environment variables respecting Next.js precedence: .env.local overrides .env
-if (!process.env.MONGODB_URI) {
+if (!process.env.DATABASE_URL) {
   if (fs.existsSync('.env.local')) {
     try { process.loadEnvFile('.env.local'); } catch {}
   }
-  if (!process.env.MONGODB_URI && fs.existsSync('.env')) {
+  if (!process.env.DATABASE_URL && fs.existsSync('.env')) {
     try { process.loadEnvFile('.env'); } catch {}
   }
 }
 
 async function bootstrap() {
   console.log('----------------------------------------------------');
-  console.log('ReliefAI Emergency Incident Platform - Admin Bootstrap');
+  console.log('ReliefAI Emergency Incident Platform - Admin Bootstrap (PostgreSQL)');
   console.log('----------------------------------------------------');
 
-  if (isMongoConfigured()) {
+  if (isDatabaseConfigured()) {
     try {
-      console.log('[Bootstrap] Connecting to database...');
-      await connectToDatabase();
-      console.log('[Bootstrap] Database connection established.');
+      console.log('[Bootstrap] Connecting to PostgreSQL database...');
+      const health = await checkDatabaseHealth();
+      if (!health.healthy) {
+        throw new Error(health.error || 'Health check failed');
+      }
+      console.log(`[Bootstrap] Database connection established (Latency: ${health.latencyMs}ms).`);
     } catch (err: any) {
       console.error('[Bootstrap Error] Failed to connect to database:', err.message);
       process.exit(1);
@@ -101,6 +104,10 @@ async function bootstrap() {
     console.log('=================================================================\n');
   } else {
     console.log('\nPassword configured from BOOTSTRAP_ADMIN_PASSWORD environment variable.');
+  }
+
+  if (isDatabaseConfigured()) {
+    await prisma.$disconnect();
   }
 
   process.exit(0);

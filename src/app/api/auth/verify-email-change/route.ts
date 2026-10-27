@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireAuth } from '@/lib/server/rbac';
 import { authDb } from '@/lib/server/auth-db';
 import { assertShowcaseMutation } from '@/lib/server/demo-policy';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 const VerifyEmailChangeSchema = z.object({
   newEmail: z.string().email('Please enter a valid email address'),

@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import {
   User,
@@ -10,19 +9,11 @@ import {
   UserRole,
 } from '../types';
 import {
-  connectToDatabase,
-  isMongoConfigured,
+  prisma,
+  isDatabaseConfigured,
   DatabaseUnavailableError,
   isDatabaseUnavailableError,
-} from '../mongodb';
-import {
-  UserModel,
-  UserSessionModel,
-  RefreshTokenModel,
-  PasswordResetTokenModel,
-  EmailVerificationTokenModel,
-  NGOApplicationModel,
-} from '../models';
+} from '../prisma';
 
 // Pre-compute bcrypt hashes for seed users (in development & automated test environments)
 const superAdminHash = bcrypt.hashSync('SuperAdmin@123456', 10);
@@ -33,7 +24,7 @@ const rescueHash = bcrypt.hashSync('Rescue@123456', 10);
 const volunteerHash = bcrypt.hashSync('Volunteer@123456', 10);
 const citizenHash = bcrypt.hashSync('Citizen@123456', 10);
 
-const initialNGOApplications: NGOApplication[] = [
+export const initialNGOApplications: NGOApplication[] = [
   {
     id: 'ngo-app-101',
     organizationName: 'ব্র্যাক ডিজাস্টার ম্যানেজমেন্ট ক্লাস্টার (BRAC Disaster Cluster)',
@@ -68,7 +59,7 @@ const initialNGOApplications: NGOApplication[] = [
   },
 ];
 
-const initialUsers: User[] = [
+export const initialUsers: User[] = [
   {
     id: 'usr-superadmin-00',
     name: 'মেজর জেনারেল কে. এম. সাজ্জাদুল ইসলাম (Maj. Gen. Sajjadul Islam)',
@@ -204,40 +195,189 @@ const authStore: AuthStore = {
   ngoApplications: [...initialNGOApplications],
 };
 
-let hasInitMongoAuth = false;
+function mapPrismaUser(u: any): User {
+  return {
+    id: u.id,
+    name: u.name,
+    displayName: u.displayName || u.name,
+    email: u.email,
+    passwordHash: u.passwordHash || undefined,
+    role: u.role as UserRole,
+    isEmailVerified: Boolean(u.isEmailVerified),
+    avatarUrl: u.avatarUrl || undefined,
+    organization: u.organization || undefined,
+    badgeNumber: u.badgeNumber || undefined,
+    assignedTeamId: u.assignedTeamId || undefined,
+    phone: u.phone || undefined,
+    phoneNumber: u.phone || undefined,
+    assignedZone: u.assignedZone || undefined,
+    skills: Array.isArray(u.skills) ? u.skills : [],
+    location: u.location ? (u.location as any) : undefined,
+    failedLoginAttempts: u.failedLoginAttempts || 0,
+    lockoutUntil: u.lockoutUntil || undefined,
+    status: u.status as any,
+    createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt),
+    updatedAt: u.updatedAt ? (u.updatedAt instanceof Date ? u.updatedAt.toISOString() : String(u.updatedAt)) : undefined,
+  };
+}
+
+function mapPrismaSession(s: any): UserSession {
+  return {
+    id: s.id,
+    userId: s.userId,
+    token: s.token,
+    ipAddress: s.ipAddress || undefined,
+    userAgent: s.userAgent || undefined,
+    expiresAt: s.expiresAt instanceof Date ? s.expiresAt.toISOString() : String(s.expiresAt),
+    createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
+  };
+}
+
+function mapPrismaRefreshToken(r: any): RefreshTokenRecord {
+  return {
+    id: r.id,
+    userId: r.userId,
+    tokenHash: r.tokenHash,
+    familyId: r.familyId,
+    isRevoked: Boolean(r.isRevoked),
+    expiresAt: r.expiresAt instanceof Date ? r.expiresAt.toISOString() : String(r.expiresAt),
+    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+  };
+}
+
+function mapPrismaPasswordResetToken(t: any): PasswordResetToken {
+  return {
+    id: t.id,
+    userId: t.userId,
+    email: t.email || undefined,
+    token: t.token,
+    otp: t.otp || undefined,
+    attempts: t.attempts || 0,
+    expiresAt: t.expiresAt instanceof Date ? t.expiresAt.toISOString() : String(t.expiresAt),
+    usedAt: t.usedAt ? (t.usedAt instanceof Date ? t.usedAt.toISOString() : String(t.usedAt)) : undefined,
+    createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : String(t.createdAt),
+  };
+}
+
+function mapPrismaEmailVerificationToken(t: any): EmailVerificationToken {
+  return {
+    id: t.id,
+    userId: t.userId,
+    email: t.email || undefined,
+    token: t.token || undefined,
+    otp: t.otp,
+    type: t.type as any,
+    attempts: t.attempts || 0,
+    expiresAt: t.expiresAt instanceof Date ? t.expiresAt.toISOString() : String(t.expiresAt),
+    usedAt: t.usedAt ? (t.usedAt instanceof Date ? t.usedAt.toISOString() : String(t.usedAt)) : undefined,
+    createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : String(t.createdAt),
+  };
+}
+
+function mapPrismaNGOApplication(a: any): NGOApplication {
+  return {
+    id: a.id,
+    organizationName: a.organizationName,
+    registrationNumber: a.registrationNumber,
+    focalPersonName: a.focalPersonName,
+    focalPersonEmail: a.focalPersonEmail,
+    focalPersonPhone: a.focalPersonPhone,
+    website: a.website || undefined,
+    hqAddress: a.hqAddress,
+    operationalDistricts: Array.isArray(a.operationalDistricts) ? a.operationalDistricts : [],
+    reliefCapabilities: Array.isArray(a.reliefCapabilities) ? a.reliefCapabilities : [],
+    documentName: a.documentName || undefined,
+    documentData: a.documentData || undefined,
+    status: a.status as any,
+    adminNotes: a.adminNotes || undefined,
+    reviewedBy: a.reviewedBy || undefined,
+    reviewedAt: a.reviewedAt ? (a.reviewedAt instanceof Date ? a.reviewedAt.toISOString() : String(a.reviewedAt)) : undefined,
+    createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
+    updatedAt: a.updatedAt ? (a.updatedAt instanceof Date ? a.updatedAt.toISOString() : String(a.updatedAt)) : undefined,
+  };
+}
+
+let hasInitPrismaAuth = false;
 async function initAuthDb() {
   const isProduction = process.env.NODE_ENV === 'production';
-  if (isProduction && !isMongoConfigured()) {
-    throw new DatabaseUnavailableError('FATAL: MONGODB_URI is required and cannot be empty in production.');
+  if (isProduction && !isDatabaseConfigured()) {
+    throw new DatabaseUnavailableError('FATAL: DATABASE_URL is required and cannot be empty in production.');
   }
 
-  if (hasInitMongoAuth && mongoose.connection.readyState === 1) return;
-  if (isMongoConfigured()) {
+  if (hasInitPrismaAuth) return;
+
+  if (isDatabaseConfigured()) {
     try {
-      const conn = await connectToDatabase();
-      if (conn) {
-        hasInitMongoAuth = true;
-        const count = await UserModel.countDocuments();
-        if (count === 0) {
-          if (allowDemoAccounts) {
-            console.log('[AuthDB] Seeding initial test accounts into database (Development / Test Environment)...');
-            await UserModel.insertMany(initialUsers);
-          } else {
-            console.warn('[ReliefAI Security] Production database has 0 users. Auto-seeding of default demo accounts is disabled.');
+      const userCount = await prisma.user.count();
+      if (userCount === 0) {
+        if (allowDemoAccounts) {
+          console.log('[AuthDB] Seeding initial test accounts into PostgreSQL (Development / Test Environment)...');
+          for (const u of initialUsers) {
+            await prisma.user.upsert({
+              where: { email: u.email.toLowerCase().trim() },
+              update: {},
+              create: {
+                id: u.id,
+                name: u.name,
+                displayName: u.displayName || u.name,
+                email: u.email.toLowerCase().trim(),
+                passwordHash: u.passwordHash,
+                role: u.role as any,
+                isEmailVerified: u.isEmailVerified,
+                status: u.status || 'approved',
+                badgeNumber: u.badgeNumber,
+                organization: u.organization,
+                phone: u.phone,
+                skills: u.skills || [],
+                assignedZone: u.assignedZone,
+                assignedTeamId: u.assignedTeamId,
+                location: u.location ? (u.location as any) : undefined,
+                createdAt: new Date(u.createdAt),
+              },
+            });
           }
-        }
-        const ngoCount = await NGOApplicationModel.countDocuments();
-        if (ngoCount === 0) {
-          await NGOApplicationModel.insertMany(initialNGOApplications);
+        } else {
+          console.warn('[ReliefAI Security] Production database has 0 users. Auto-seeding of default demo accounts is disabled.');
         }
       }
+
+      const ngoCount = await prisma.nGOApplication.count();
+      if (ngoCount === 0) {
+        for (const app of initialNGOApplications) {
+          await prisma.nGOApplication.upsert({
+            where: { registrationNumber: app.registrationNumber },
+            update: {},
+            create: {
+              id: app.id,
+              organizationName: app.organizationName,
+              registrationNumber: app.registrationNumber,
+              focalPersonName: app.focalPersonName,
+              focalPersonEmail: app.focalPersonEmail.toLowerCase().trim(),
+              focalPersonPhone: app.focalPersonPhone,
+              website: app.website,
+              hqAddress: app.hqAddress,
+              operationalDistricts: app.operationalDistricts,
+              reliefCapabilities: app.reliefCapabilities,
+              documentName: app.documentName,
+              status: app.status as any,
+              reviewedBy: app.reviewedBy,
+              reviewedAt: app.reviewedAt ? new Date(app.reviewedAt) : undefined,
+              createdAt: new Date(app.createdAt),
+            },
+          });
+        }
+      }
+
+      hasInitPrismaAuth = true;
     } catch (e) {
+      hasInitPrismaAuth = false;
       if (isProduction) {
+        console.error('[ReliefAI AuthDB] Failed to establish database connection:', e instanceof Error ? e.message : e);
         throw isDatabaseUnavailableError(e)
           ? e
           : new DatabaseUnavailableError('Failed to establish database connection in production.');
       }
-      console.warn('[ReliefAI Auth] Mongo connection fallback:', e);
+      console.warn('[ReliefAI Auth] PostgreSQL connection fallback to memory:', e);
     }
   }
 }
@@ -248,11 +388,14 @@ export const authDb = {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
     const cleanEmail = email.toLowerCase().trim();
-    if (isMongoConfigured()) {
+
+    if (isDatabaseConfigured()) {
       try {
-        const found = await UserModel.findOne({ email: cleanEmail }).lean();
+        const found = await prisma.user.findUnique({
+          where: { email: cleanEmail },
+        });
         if (found) {
-          const user = { ...found, id: (found as any).id, _id: undefined } as User;
+          const user = mapPrismaUser(found);
           const idx = authStore.users.findIndex((u) => u.email.toLowerCase() === cleanEmail);
           if (idx !== -1) authStore.users[idx] = user;
           else authStore.users.push(user);
@@ -260,10 +403,11 @@ export const authDb = {
         }
         if (isProduction) return undefined;
       } catch (err) {
+        console.error('[ReliefAI AuthDB] User lookup failed for email query:', err instanceof Error ? err.message : err);
         if (isProduction) {
           throw new DatabaseUnavailableError('Database query failed during user lookup.');
         }
-        console.warn('Mongo findUserByEmail failed, using memory:', err);
+        console.warn('Prisma findUserByEmail failed, using memory:', err);
       }
     } else if (isProduction) {
       throw new DatabaseUnavailableError('Persistent database is required in production.');
@@ -274,18 +418,22 @@ export const authDb = {
   async findUserById(id: string): Promise<User | undefined> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
-    if (isMongoConfigured()) {
+
+    if (isDatabaseConfigured()) {
       try {
-        const found = await UserModel.findOne({ id }).lean();
+        const found = await prisma.user.findUnique({
+          where: { id },
+        });
         if (found) {
-          return { ...found, id: (found as any).id, _id: undefined } as User;
+          return mapPrismaUser(found);
         }
         if (isProduction) return undefined;
       } catch (err) {
+        console.error('[ReliefAI AuthDB] User lookup failed for ID query:', err instanceof Error ? err.message : err);
         if (isProduction) {
           throw new DatabaseUnavailableError('Database query failed during user lookup.');
         }
-        console.warn('Mongo findUserById failed:', err);
+        console.warn('Prisma findUserById failed:', err);
       }
     } else if (isProduction) {
       throw new DatabaseUnavailableError('Persistent database is required in production.');
@@ -300,6 +448,7 @@ export const authDb = {
   },
 
   async createUser(data: {
+    id?: string;
     name: string;
     displayName?: string;
     email: string;
@@ -313,13 +462,14 @@ export const authDb = {
     assignedZone?: string;
     skills?: string[];
     isEmailVerified?: boolean;
+    status?: 'active' | 'approved' | 'pending' | 'pending_approval' | 'rejected' | 'suspended';
   }): Promise<User> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
     const passwordHash = data.passwordHash || (data.password ? bcrypt.hashSync(data.password, 10) : '');
 
     const newUser: User = {
-      id: `usr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id: data.id || `usr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: data.name,
       displayName: data.displayName || data.name,
       email: data.email.toLowerCase().trim(),
@@ -333,17 +483,35 @@ export const authDb = {
       assignedTeamId: data.assignedTeamId,
       assignedZone: data.assignedZone,
       skills: data.skills || [],
+      status: data.status || 'approved',
       createdAt: new Date().toISOString(),
     };
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        await UserModel.create(newUser);
-        return newUser;
+        const created = await prisma.user.create({
+          data: {
+            id: newUser.id,
+            name: newUser.name,
+            displayName: newUser.displayName,
+            email: newUser.email,
+            passwordHash: newUser.passwordHash,
+            role: newUser.role as any,
+            isEmailVerified: newUser.isEmailVerified,
+            phone: newUser.phone,
+            organization: newUser.organization,
+            badgeNumber: newUser.badgeNumber,
+            assignedTeamId: newUser.assignedTeamId,
+            assignedZone: newUser.assignedZone,
+            skills: newUser.skills || [],
+            status: newUser.status || 'approved',
+            createdAt: new Date(newUser.createdAt),
+          },
+        });
+        return mapPrismaUser(created);
       } catch (err) {
         throw new DatabaseUnavailableError('Database write failed while creating user.');
       }
@@ -351,12 +519,30 @@ export const authDb = {
 
     authStore.users.push(newUser);
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await UserModel.create(newUser);
+        const created = await prisma.user.create({
+          data: {
+            id: newUser.id,
+            name: newUser.name,
+            displayName: newUser.displayName,
+            email: newUser.email,
+            passwordHash: newUser.passwordHash,
+            role: newUser.role as any,
+            isEmailVerified: newUser.isEmailVerified,
+            phone: newUser.phone,
+            organization: newUser.organization,
+            badgeNumber: newUser.badgeNumber,
+            assignedTeamId: newUser.assignedTeamId,
+            assignedZone: newUser.assignedZone,
+            skills: newUser.skills || [],
+            status: newUser.status || 'approved',
+            createdAt: new Date(newUser.createdAt),
+          },
+        });
+        return mapPrismaUser(created);
       } catch (err) {
-        console.warn('Mongo createUser failed, saved in memory:', err);
+        console.warn('Prisma createUser failed, saved in memory:', err);
       }
     }
 
@@ -376,13 +562,15 @@ export const authDb = {
     const updatedAt = new Date().toISOString();
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        const res = await UserModel.findOneAndUpdate({ id: userId }, { passwordHash, updatedAt });
-        return Boolean(res);
+        await prisma.user.update({
+          where: { id: userId },
+          data: { passwordHash, updatedAt: new Date(updatedAt) },
+        });
+        return true;
       } catch (err) {
         throw new DatabaseUnavailableError('Database write failed while updating password.');
       }
@@ -394,12 +582,14 @@ export const authDb = {
       user.updatedAt = updatedAt;
     }
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await UserModel.findOneAndUpdate({ id: userId }, { passwordHash, updatedAt });
+        await prisma.user.update({
+          where: { id: userId },
+          data: { passwordHash, updatedAt: new Date(updatedAt) },
+        });
       } catch (err) {
-        console.warn('Mongo updateUserPassword failed:', err);
+        console.warn('Prisma updateUserPassword failed:', err);
       }
     }
     return Boolean(user);
@@ -410,21 +600,36 @@ export const authDb = {
     const isProduction = process.env.NODE_ENV === 'production';
     const updatedAt = new Date().toISOString();
 
+    const dataToUpdate: any = {
+      updatedAt: new Date(updatedAt),
+    };
+    if (updates.name !== undefined) dataToUpdate.name = updates.name;
+    if (updates.displayName !== undefined) dataToUpdate.displayName = updates.displayName;
+    if (updates.email !== undefined) dataToUpdate.email = updates.email.toLowerCase().trim();
+    if (updates.role !== undefined) dataToUpdate.role = updates.role as any;
+    if (updates.isEmailVerified !== undefined) dataToUpdate.isEmailVerified = updates.isEmailVerified;
+    if (updates.avatarUrl !== undefined) dataToUpdate.avatarUrl = updates.avatarUrl;
+    if (updates.organization !== undefined) dataToUpdate.organization = updates.organization;
+    if (updates.badgeNumber !== undefined) dataToUpdate.badgeNumber = updates.badgeNumber;
+    if (updates.assignedTeamId !== undefined) dataToUpdate.assignedTeamId = updates.assignedTeamId;
+    if (updates.phone !== undefined) dataToUpdate.phone = updates.phone;
+    if (updates.assignedZone !== undefined) dataToUpdate.assignedZone = updates.assignedZone;
+    if (updates.skills !== undefined) dataToUpdate.skills = updates.skills;
+    if (updates.location !== undefined) dataToUpdate.location = updates.location as any;
+    if (updates.failedLoginAttempts !== undefined) dataToUpdate.failedLoginAttempts = updates.failedLoginAttempts;
+    if (updates.lockoutUntil !== undefined) dataToUpdate.lockoutUntil = updates.lockoutUntil;
+    if (updates.status !== undefined) dataToUpdate.status = updates.status;
+
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        const updated = await UserModel.findOneAndUpdate(
-          { id: userId },
-          { ...updates, updatedAt },
-          { new: true }
-        ).lean();
-        if (updated) {
-          return { ...updated, id: (updated as any).id, _id: undefined } as User;
-        }
-        return undefined;
+        const updated = await prisma.user.update({
+          where: { id: userId },
+          data: dataToUpdate,
+        });
+        return mapPrismaUser(updated);
       } catch (err) {
         throw new DatabaseUnavailableError('Database write failed while updating user profile.');
       }
@@ -435,19 +640,15 @@ export const authDb = {
       Object.assign(user, updates, { updatedAt });
     }
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        const updated = await UserModel.findOneAndUpdate(
-          { id: userId },
-          { ...updates, updatedAt },
-          { new: true }
-        ).lean();
-        if (updated) {
-          return { ...updated, id: (updated as any).id, _id: undefined } as User;
-        }
+        const updated = await prisma.user.update({
+          where: { id: userId },
+          data: dataToUpdate,
+        });
+        return mapPrismaUser(updated);
       } catch (err) {
-        console.warn('Mongo updateUserProfile failed:', err);
+        console.warn('Prisma updateUserProfile failed:', err);
       }
     }
     return user;
@@ -463,13 +664,15 @@ export const authDb = {
     const updatedAt = new Date().toISOString();
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        const res = await UserModel.findOneAndUpdate({ id: userId }, { isEmailVerified: true, updatedAt });
-        return Boolean(res);
+        await prisma.user.update({
+          where: { id: userId },
+          data: { isEmailVerified: true, updatedAt: new Date(updatedAt) },
+        });
+        return true;
       } catch (err) {
         throw new DatabaseUnavailableError('Database write failed while verifying user email.');
       }
@@ -481,12 +684,14 @@ export const authDb = {
       user.updatedAt = updatedAt;
     }
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await UserModel.findOneAndUpdate({ id: userId }, { isEmailVerified: true, updatedAt });
+        await prisma.user.update({
+          where: { id: userId },
+          data: { isEmailVerified: true, updatedAt: new Date(updatedAt) },
+        });
       } catch (err) {
-        console.warn('Mongo verifyUserEmail failed:', err);
+        console.warn('Prisma verifyUserEmail failed:', err);
       }
     }
     return Boolean(user);
@@ -495,18 +700,21 @@ export const authDb = {
   async listUsers(): Promise<User[]> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
-    if (isMongoConfigured()) {
+
+    if (isDatabaseConfigured()) {
       try {
-        const users = await UserModel.find().lean();
+        const users = await prisma.user.findMany({
+          orderBy: { createdAt: 'desc' },
+        });
         if (users && users.length > 0) {
-          return users.map((u: any) => this.sanitizeUser({ ...u, id: u.id, _id: undefined }));
+          return users.map((u) => this.sanitizeUser(mapPrismaUser(u)));
         }
         if (isProduction) return [];
       } catch (err) {
         if (isProduction) {
           throw new DatabaseUnavailableError('Database query failed while listing users.');
         }
-        console.warn('Mongo listUsers failed:', err);
+        console.warn('Prisma listUsers failed:', err);
       }
     } else if (isProduction) {
       throw new DatabaseUnavailableError('Persistent database is required in production.');
@@ -525,15 +733,20 @@ export const authDb = {
   async hasAdminUser(): Promise<boolean> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
-    if (isMongoConfigured()) {
+
+    if (isDatabaseConfigured()) {
       try {
-        const adminCount = await UserModel.countDocuments({ role: { $in: ['admin', 'super_admin'] } });
-        return adminCount > 0;
+        const count = await prisma.user.count({
+          where: {
+            role: { in: ['admin', 'super_admin'] },
+          },
+        });
+        return count > 0;
       } catch (err) {
         if (isProduction) {
           throw new DatabaseUnavailableError('Database query failed while checking admin presence.');
         }
-        console.warn('Mongo countDocuments failed:', err);
+        console.warn('Prisma count failed:', err);
       }
     } else if (isProduction) {
       throw new DatabaseUnavailableError('Persistent database is required in production.');
@@ -546,14 +759,13 @@ export const authDb = {
     const isProduction = process.env.NODE_ENV === 'production';
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
         await this.deleteUserSessions(userId);
-        const res = await UserModel.deleteOne({ id: userId });
-        return res.deletedCount > 0;
+        await prisma.user.delete({ where: { id: userId } });
+        return true;
       } catch (err) {
         throw new DatabaseUnavailableError('Database write failed while deleting user.');
       }
@@ -565,12 +777,11 @@ export const authDb = {
     }
     await this.deleteUserSessions(userId);
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await UserModel.deleteOne({ id: userId });
+        await prisma.user.delete({ where: { id: userId } });
       } catch (err) {
-        console.warn('Mongo deleteUser failed:', err);
+        console.warn('Prisma deleteUser failed:', err);
       }
     }
     return idx !== -1;
@@ -584,11 +795,12 @@ export const authDb = {
   ): Promise<UserSession> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
+
     let sessionData: { userId: string; token: string; ipAddress?: string; userAgent?: string; expiresAt: string };
     if (typeof dataOrUserId === 'string') {
       sessionData = {
         userId: dataOrUserId,
-        token: `tok-${Date.now()}`,
+        token: `tok-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         ipAddress: ipAddress || '127.0.0.1',
         userAgent: userAgent || 'Browser',
         expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
@@ -596,7 +808,7 @@ export const authDb = {
     } else {
       sessionData = {
         userId: dataOrUserId.userId,
-        token: dataOrUserId.token || `tok-${Date.now()}`,
+        token: dataOrUserId.token || `tok-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         ipAddress: dataOrUserId.ipAddress,
         userAgent: dataOrUserId.userAgent,
         expiresAt: dataOrUserId.expiresAt || new Date(Date.now() + 30 * 86400000).toISOString(),
@@ -610,13 +822,22 @@ export const authDb = {
     };
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        await UserSessionModel.create(session);
-        return session;
+        const created = await prisma.userSession.create({
+          data: {
+            id: session.id,
+            userId: session.userId,
+            token: session.token,
+            ipAddress: session.ipAddress,
+            userAgent: session.userAgent,
+            expiresAt: new Date(session.expiresAt),
+            createdAt: new Date(session.createdAt),
+          },
+        });
+        return mapPrismaSession(created);
       } catch (err) {
         throw new DatabaseUnavailableError('Database write failed while creating user session.');
       }
@@ -624,12 +845,22 @@ export const authDb = {
 
     authStore.sessions.push(session);
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await UserSessionModel.create(session);
+        const created = await prisma.userSession.create({
+          data: {
+            id: session.id,
+            userId: session.userId,
+            token: session.token,
+            ipAddress: session.ipAddress,
+            userAgent: session.userAgent,
+            expiresAt: new Date(session.expiresAt),
+            createdAt: new Date(session.createdAt),
+          },
+        });
+        return mapPrismaSession(created);
       } catch (err) {
-        console.warn('Mongo createSession failed:', err);
+        console.warn('Prisma createSession failed:', err);
       }
     }
     return session;
@@ -638,11 +869,14 @@ export const authDb = {
   async findSession(sessionId: string): Promise<UserSession | undefined> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
-    if (isMongoConfigured()) {
+
+    if (isDatabaseConfigured()) {
       try {
-        const found = await UserSessionModel.findOne({ id: sessionId }).lean();
+        const found = await prisma.userSession.findUnique({
+          where: { id: sessionId },
+        });
         if (found && new Date(found.expiresAt).getTime() > Date.now()) {
-          return { ...found, id: (found as any).id, _id: undefined } as UserSession;
+          return mapPrismaSession(found);
         }
         if (isProduction) return undefined;
       } catch (err) {
@@ -663,12 +897,11 @@ export const authDb = {
     const isProduction = process.env.NODE_ENV === 'production';
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        await UserSessionModel.deleteOne({ id: sessionId });
+        await prisma.userSession.deleteMany({ where: { id: sessionId } });
         return;
       } catch (err) {
         throw new DatabaseUnavailableError('Database write failed while deleting session.');
@@ -678,10 +911,9 @@ export const authDb = {
     const idx = authStore.sessions.findIndex((s) => s.id === sessionId);
     if (idx !== -1) authStore.sessions.splice(idx, 1);
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await UserSessionModel.deleteOne({ id: sessionId });
+        await prisma.userSession.deleteMany({ where: { id: sessionId } });
       } catch {}
     }
   },
@@ -691,13 +923,12 @@ export const authDb = {
     const isProduction = process.env.NODE_ENV === 'production';
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        await UserSessionModel.deleteMany({ userId });
-        await RefreshTokenModel.deleteMany({ userId });
+        await prisma.userSession.deleteMany({ where: { userId } });
+        await prisma.refreshToken.deleteMany({ where: { userId } });
         return;
       } catch (err) {
         throw new DatabaseUnavailableError('Database write failed while deleting user sessions.');
@@ -707,11 +938,10 @@ export const authDb = {
     authStore.sessions = authStore.sessions.filter((s) => s.userId !== userId);
     authStore.refreshTokens = authStore.refreshTokens.filter((r) => r.userId !== userId);
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await UserSessionModel.deleteMany({ userId });
-        await RefreshTokenModel.deleteMany({ userId });
+        await prisma.userSession.deleteMany({ where: { userId } });
+        await prisma.refreshToken.deleteMany({ where: { userId } });
       } catch {}
     }
   },
@@ -728,13 +958,22 @@ export const authDb = {
     };
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        await RefreshTokenModel.create(record);
-        return record;
+        const created = await prisma.refreshToken.create({
+          data: {
+            id: record.id,
+            userId: record.userId,
+            tokenHash: record.tokenHash,
+            familyId: record.familyId,
+            isRevoked: record.isRevoked,
+            expiresAt: new Date(record.expiresAt),
+            createdAt: new Date(record.createdAt),
+          },
+        });
+        return mapPrismaRefreshToken(created);
       } catch (err) {
         throw new DatabaseUnavailableError('Database write failed while storing refresh token.');
       }
@@ -742,12 +981,22 @@ export const authDb = {
 
     authStore.refreshTokens.push(record);
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await RefreshTokenModel.create(record);
+        const created = await prisma.refreshToken.create({
+          data: {
+            id: record.id,
+            userId: record.userId,
+            tokenHash: record.tokenHash,
+            familyId: record.familyId,
+            isRevoked: record.isRevoked,
+            expiresAt: new Date(record.expiresAt),
+            createdAt: new Date(record.createdAt),
+          },
+        });
+        return mapPrismaRefreshToken(created);
       } catch (err) {
-        console.warn('Mongo storeRefreshToken failed:', err);
+        console.warn('Prisma storeRefreshToken failed:', err);
       }
     }
     return record;
@@ -756,11 +1005,14 @@ export const authDb = {
   async findRefreshToken(tokenHash: string): Promise<RefreshTokenRecord | undefined> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
-    if (isMongoConfigured()) {
+
+    if (isDatabaseConfigured()) {
       try {
-        const found = await RefreshTokenModel.findOne({ tokenHash }).lean();
+        const found = await prisma.refreshToken.findUnique({
+          where: { tokenHash },
+        });
         if (found) {
-          return { ...found, id: (found as any).id, _id: undefined } as RefreshTokenRecord;
+          return mapPrismaRefreshToken(found);
         }
         if (isProduction) return undefined;
       } catch (err) {
@@ -774,20 +1026,54 @@ export const authDb = {
     return authStore.refreshTokens.find((r) => r.tokenHash === tokenHash);
   },
 
-  async revokeTokenFamily(familyId: string): Promise<void> {
+  async revokeRefreshToken(tokenHash: string): Promise<void> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        await RefreshTokenModel.updateMany({ familyId }, { isRevoked: true });
+        await prisma.refreshToken.updateMany({
+          where: { tokenHash },
+          data: { isRevoked: true },
+        });
         return;
       } catch (err) {
-        throw new DatabaseUnavailableError('Database write failed while revoking token family.');
+        throw new DatabaseUnavailableError('Database write failed while revoking refresh token.');
+      }
+    }
+
+    const token = authStore.refreshTokens.find((r) => r.tokenHash === tokenHash);
+    if (token) token.isRevoked = true;
+
+    if (isDatabaseConfigured()) {
+      try {
+        await prisma.refreshToken.updateMany({
+          where: { tokenHash },
+          data: { isRevoked: true },
+        });
+      } catch {}
+    }
+  },
+
+  async revokeFamily(familyId: string): Promise<void> {
+    await initAuthDb();
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction) {
+      if (!isDatabaseConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        await prisma.refreshToken.updateMany({
+          where: { familyId },
+          data: { isRevoked: true },
+        });
+        return;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while revoking refresh token family.');
       }
     }
 
@@ -795,128 +1081,254 @@ export const authDb = {
       if (r.familyId === familyId) r.isRevoked = true;
     });
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await RefreshTokenModel.updateMany({ familyId }, { isRevoked: true });
+        await prisma.refreshToken.updateMany({
+          where: { familyId },
+          data: { isRevoked: true },
+        });
       } catch {}
     }
   },
 
   // Password Reset Tokens
-  async createPasswordResetToken(userId: string, token: string): Promise<PasswordResetToken> {
+  async createPasswordResetToken(data: {
+    userId: string;
+    email?: string;
+    token: string;
+    otp?: string;
+    expiresAt: string;
+  }): Promise<PasswordResetToken> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
+
     const record: PasswordResetToken = {
-      id: `prt-${Date.now()}`,
-      userId,
-      token,
-      expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      id: `prt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      userId: data.userId,
+      email: data.email?.toLowerCase().trim(),
+      token: data.token,
+      otp: data.otp,
+      attempts: 0,
+      expiresAt: data.expiresAt,
       createdAt: new Date().toISOString(),
     };
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        await PasswordResetTokenModel.deleteMany({ userId });
-        await PasswordResetTokenModel.create(record);
-        return record;
+        const created = await prisma.passwordResetToken.create({
+          data: {
+            id: record.id,
+            userId: record.userId,
+            email: record.email,
+            token: record.token,
+            otp: record.otp,
+            attempts: record.attempts || 0,
+            expiresAt: new Date(record.expiresAt),
+            createdAt: new Date(record.createdAt),
+          },
+        });
+        return mapPrismaPasswordResetToken(created);
       } catch (err) {
         throw new DatabaseUnavailableError('Database write failed while creating password reset token.');
       }
     }
 
-    authStore.passwordResetTokens = authStore.passwordResetTokens.filter((t) => t.userId !== userId);
     authStore.passwordResetTokens.push(record);
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await PasswordResetTokenModel.deleteMany({ userId });
-        await PasswordResetTokenModel.create(record);
-      } catch {}
+        const created = await prisma.passwordResetToken.create({
+          data: {
+            id: record.id,
+            userId: record.userId,
+            email: record.email,
+            token: record.token,
+            otp: record.otp,
+            attempts: record.attempts || 0,
+            expiresAt: new Date(record.expiresAt),
+            createdAt: new Date(record.createdAt),
+          },
+        });
+        return mapPrismaPasswordResetToken(created);
+      } catch (err) {
+        console.warn('Prisma createPasswordResetToken failed:', err);
+      }
     }
     return record;
   },
 
-  async findValidPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+  async findPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
-    if (isMongoConfigured()) {
+
+    if (isDatabaseConfigured()) {
       try {
-        const found = await PasswordResetTokenModel.findOne({ token, usedAt: { $exists: false } }).lean();
-        if (found && new Date(found.expiresAt).getTime() > Date.now()) {
-          return { ...found, id: (found as any).id, _id: undefined } as PasswordResetToken;
+        const found = await prisma.passwordResetToken.findUnique({
+          where: { token },
+        });
+        if (found) {
+          return mapPrismaPasswordResetToken(found);
         }
         if (isProduction) return undefined;
       } catch (err) {
         if (isProduction) {
-          throw new DatabaseUnavailableError('Database query failed while validating reset token.');
+          throw new DatabaseUnavailableError('Database query failed while fetching password reset token.');
         }
       }
     } else if (isProduction) {
       throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
-    return authStore.passwordResetTokens.find(
-      (t) => t.token === token && !t.usedAt && new Date(t.expiresAt).getTime() > Date.now()
-    );
+    return authStore.passwordResetTokens.find((t) => t.token === token);
   },
 
-  async markPasswordResetTokenUsed(token: string): Promise<void> {
+  async findPasswordResetTokenByOtp(email: string, otp: string): Promise<PasswordResetToken | undefined> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
-    const now = new Date().toISOString();
+    const cleanEmail = email.toLowerCase().trim();
+
+    if (isDatabaseConfigured()) {
+      try {
+        const found = await prisma.passwordResetToken.findFirst({
+          where: {
+            email: cleanEmail,
+            otp,
+            usedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (found) {
+          return mapPrismaPasswordResetToken(found);
+        }
+        if (isProduction) return undefined;
+      } catch (err) {
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while validating password reset OTP.');
+        }
+      }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
+    }
+    const now = Date.now();
+    return authStore.passwordResetTokens
+      .filter((t) => t.email?.toLowerCase() === cleanEmail && t.otp === otp && !t.usedAt && new Date(t.expiresAt).getTime() > now)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  },
+
+  async markPasswordResetTokenUsed(tokenId: string): Promise<void> {
+    await initAuthDb();
+    const isProduction = process.env.NODE_ENV === 'production';
+    const usedAt = new Date().toISOString();
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        await PasswordResetTokenModel.updateOne({ token }, { usedAt: now });
+        await prisma.passwordResetToken.update({
+          where: { id: tokenId },
+          data: { usedAt: new Date(usedAt) },
+        });
         return;
       } catch (err) {
-        throw new DatabaseUnavailableError('Database write failed while invalidating reset token.');
+        throw new DatabaseUnavailableError('Database write failed while updating password reset token.');
       }
     }
 
-    const item = authStore.passwordResetTokens.find((t) => t.token === token);
-    if (item) item.usedAt = now;
+    const token = authStore.passwordResetTokens.find((t) => t.id === tokenId);
+    if (token) token.usedAt = usedAt;
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await PasswordResetTokenModel.updateOne({ token }, { usedAt: now });
+        await prisma.passwordResetToken.update({
+          where: { id: tokenId },
+          data: { usedAt: new Date(usedAt) },
+        });
       } catch {}
     }
   },
 
-  // --------------------------------------------------------------------------
-  // 6-Digit Email Verification Tokens / OTPs
-  // --------------------------------------------------------------------------
-  async createEmailVerificationToken(userId: string, token: string): Promise<EmailVerificationToken> {
+  async incrementPasswordResetAttempts(tokenId: string): Promise<number> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction) {
+      if (!isDatabaseConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        const updated = await prisma.passwordResetToken.update({
+          where: { id: tokenId },
+          data: { attempts: { increment: 1 } },
+        });
+        return updated.attempts;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while incrementing reset attempts.');
+      }
+    }
+
+    const token = authStore.passwordResetTokens.find((t) => t.id === tokenId);
+    if (token) {
+      token.attempts = (token.attempts || 0) + 1;
+      if (isDatabaseConfigured()) {
+        try {
+          await prisma.passwordResetToken.update({
+            where: { id: tokenId },
+            data: { attempts: { increment: 1 } },
+          });
+        } catch {}
+      }
+      return token.attempts;
+    }
+    return 0;
+  },
+
+  // Email Verification Tokens
+  async createEmailVerificationToken(data: {
+    userId: string;
+    email?: string;
+    token?: string;
+    otp: string;
+    type?: string;
+    expiresAt: string;
+  }): Promise<EmailVerificationToken> {
+    await initAuthDb();
+    const isProduction = process.env.NODE_ENV === 'production';
+
     const record: EmailVerificationToken = {
-      id: `evt-${Date.now()}`,
-      userId,
-      token,
-      otp: token.slice(0, 6),
-      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+      id: `evt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      userId: data.userId,
+      email: data.email?.toLowerCase().trim(),
+      token: data.token,
+      otp: data.otp,
+      type: (data.type as any) || 'email_verification',
+      attempts: 0,
+      expiresAt: data.expiresAt,
       createdAt: new Date().toISOString(),
     };
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        await EmailVerificationTokenModel.create(record);
-        return record;
+        const created = await prisma.emailVerificationToken.create({
+          data: {
+            id: record.id,
+            userId: record.userId,
+            email: record.email,
+            token: record.token,
+            otp: record.otp || '',
+            type: record.type as any,
+            attempts: record.attempts || 0,
+            expiresAt: new Date(record.expiresAt),
+            createdAt: new Date(record.createdAt),
+          },
+        });
+        return mapPrismaEmailVerificationToken(created);
       } catch (err) {
         throw new DatabaseUnavailableError('Database write failed while creating verification token.');
       }
@@ -924,214 +1336,172 @@ export const authDb = {
 
     authStore.emailVerificationTokens.push(record);
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await EmailVerificationTokenModel.create(record);
-      } catch {}
+        const created = await prisma.emailVerificationToken.create({
+          data: {
+            id: record.id,
+            userId: record.userId,
+            email: record.email,
+            token: record.token,
+            otp: record.otp || '',
+            type: record.type as any,
+            attempts: record.attempts || 0,
+            expiresAt: new Date(record.expiresAt),
+            createdAt: new Date(record.createdAt),
+          },
+        });
+        return mapPrismaEmailVerificationToken(created);
+      } catch (err) {
+        console.warn('Prisma createEmailVerificationToken failed:', err);
+      }
     }
     return record;
   },
 
-  async findValidEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined> {
+  async findEmailVerificationToken(
+    userId: string,
+    otp: string,
+    type: string = 'email_verification'
+  ): Promise<EmailVerificationToken | undefined> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
-    if (isMongoConfigured()) {
+
+    if (isDatabaseConfigured()) {
       try {
-        const found = await EmailVerificationTokenModel.findOne({ token, usedAt: { $exists: false } }).lean();
-        if (found && new Date(found.expiresAt).getTime() > Date.now()) {
-          return { ...found, id: (found as any).id, _id: undefined } as EmailVerificationToken;
+        const found = await prisma.emailVerificationToken.findFirst({
+          where: {
+            userId,
+            otp,
+            type: type as any,
+            usedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (found) {
+          return mapPrismaEmailVerificationToken(found);
         }
         if (isProduction) return undefined;
       } catch (err) {
         if (isProduction) {
-          throw new DatabaseUnavailableError('Database query failed while validating verification token.');
+          throw new DatabaseUnavailableError('Database query failed while verifying token.');
         }
       }
     } else if (isProduction) {
       throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
-    return authStore.emailVerificationTokens.find(
-      (t) => t.token === token && !t.usedAt && new Date(t.expiresAt).getTime() > Date.now()
-    );
+    const now = Date.now();
+    return authStore.emailVerificationTokens
+      .filter((t) => t.userId === userId && t.otp === otp && t.type === type && !t.usedAt && new Date(t.expiresAt).getTime() > now)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
   },
 
-  async markEmailVerificationTokenUsed(token: string): Promise<void> {
+  async markEmailVerificationTokenUsed(tokenId: string): Promise<void> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
-    const now = new Date().toISOString();
+    const usedAt = new Date().toISOString();
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        await EmailVerificationTokenModel.updateOne({ token }, { usedAt: now });
+        await prisma.emailVerificationToken.update({
+          where: { id: tokenId },
+          data: { usedAt: new Date(usedAt) },
+        });
         return;
       } catch (err) {
-        throw new DatabaseUnavailableError('Database write failed while marking verification token used.');
+        throw new DatabaseUnavailableError('Database write failed while updating verification token.');
       }
     }
 
-    const item = authStore.emailVerificationTokens.find((t) => t.token === token);
-    if (item) item.usedAt = now;
+    const token = authStore.emailVerificationTokens.find((t) => t.id === tokenId);
+    if (token) token.usedAt = usedAt;
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await EmailVerificationTokenModel.updateOne({ token }, { usedAt: now });
+        await prisma.emailVerificationToken.update({
+          where: { id: tokenId },
+          data: { usedAt: new Date(usedAt) },
+        });
       } catch {}
     }
   },
 
-  // --------------------------------------------------------------------------
-  // 6-Digit Email Verification OTPs (Production Implementation)
-  // --------------------------------------------------------------------------
+  async incrementEmailVerificationAttempts(tokenId: string): Promise<number> {
+    await initAuthDb();
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction) {
+      if (!isDatabaseConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        const updated = await prisma.emailVerificationToken.update({
+          where: { id: tokenId },
+          data: { attempts: { increment: 1 } },
+        });
+        return updated.attempts;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while incrementing verification attempts.');
+      }
+    }
+
+    const token = authStore.emailVerificationTokens.find((t) => t.id === tokenId);
+    if (token) {
+      token.attempts = (token.attempts || 0) + 1;
+      if (isDatabaseConfigured()) {
+        try {
+          await prisma.emailVerificationToken.update({
+            where: { id: tokenId },
+            data: { attempts: { increment: 1 } },
+          });
+        } catch {}
+      }
+      return token.attempts;
+    }
+    return 0;
+  },
+
   async createEmailVerificationOtp(
     userId: string,
     email: string,
     otp: string,
-    type: EmailVerificationToken['type'] = 'email_verification',
-    expiresMinutes: number = 10
+    type: string = 'email_verification',
+    expireMinutes: number = 15
   ): Promise<EmailVerificationToken> {
-    await initAuthDb();
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cleanEmail = email.toLowerCase().trim();
-
-    const record: EmailVerificationToken = {
-      id: `otp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    const expiresAt = new Date(Date.now() + expireMinutes * 60000).toISOString();
+    return this.createEmailVerificationToken({
       userId,
-      email: cleanEmail,
+      email,
       otp,
       type,
-      attempts: 0,
-      expiresAt: new Date(Date.now() + expiresMinutes * 60000).toISOString(),
-      createdAt: new Date().toISOString(),
-    };
-
-    if (isProduction) {
-      if (!isMongoConfigured()) {
-        throw new DatabaseUnavailableError('Persistent database is required in production.');
-      }
-      try {
-        await connectToDatabase();
-        await EmailVerificationTokenModel.deleteMany({ email: cleanEmail, type, usedAt: { $exists: false } });
-        await EmailVerificationTokenModel.create(record);
-        return record;
-      } catch (err) {
-        throw new DatabaseUnavailableError('Database write failed while creating verification OTP.');
-      }
-    }
-
-    authStore.emailVerificationTokens = authStore.emailVerificationTokens.filter(
-      (t) => !(t.email?.toLowerCase() === cleanEmail && t.type === type && !t.usedAt)
-    );
-    authStore.emailVerificationTokens.push(record);
-
-    if (isMongoConfigured()) {
-      try {
-        await connectToDatabase();
-        await EmailVerificationTokenModel.deleteMany({ email: cleanEmail, type, usedAt: { $exists: false } });
-        await EmailVerificationTokenModel.create(record);
-      } catch (err) {
-        console.warn('Mongo createEmailVerificationOtp fallback:', err);
-      }
-    }
-
-    return record;
-  },
-
-  async findValidEmailVerificationOtp(
-    email: string,
-    otp: string,
-    type?: string
-  ): Promise<EmailVerificationToken | undefined> {
-    await initAuthDb();
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cleanEmail = email.toLowerCase().trim();
-    const cleanOtp = otp.trim();
-
-    if (isMongoConfigured()) {
-      try {
-        const query: any = {
-          email: cleanEmail,
-          otp: cleanOtp,
-          usedAt: { $exists: false },
-        };
-        if (type) query.type = type;
-        const found = await EmailVerificationTokenModel.findOne(query).lean();
-        if (found && new Date(found.expiresAt).getTime() > Date.now()) {
-          return { ...found, id: (found as any).id, _id: undefined } as EmailVerificationToken;
-        }
-        if (isProduction) return undefined;
-      } catch (err) {
-        if (isProduction) {
-          throw new DatabaseUnavailableError('Database query failed while validating verification OTP.');
-        }
-      }
-    } else if (isProduction) {
-      throw new DatabaseUnavailableError('Persistent database is required in production.');
-    }
-
-    return authStore.emailVerificationTokens.find(
-      (t) =>
-        t.email?.toLowerCase() === cleanEmail &&
-        t.otp === cleanOtp &&
-        (!type || t.type === type) &&
-        !t.usedAt &&
-        new Date(t.expiresAt).getTime() > Date.now()
-    );
-  },
-
-  async markEmailVerificationOtpUsed(id: string): Promise<void> {
-    await initAuthDb();
-    const isProduction = process.env.NODE_ENV === 'production';
-    const now = new Date().toISOString();
-
-    if (isProduction) {
-      if (!isMongoConfigured()) {
-        throw new DatabaseUnavailableError('Persistent database is required in production.');
-      }
-      try {
-        await connectToDatabase();
-        await EmailVerificationTokenModel.updateOne({ id }, { usedAt: now });
-        return;
-      } catch (err) {
-        throw new DatabaseUnavailableError('Database write failed while marking verification OTP used.');
-      }
-    }
-
-    const item = authStore.emailVerificationTokens.find((t) => t.id === id);
-    if (item) item.usedAt = now;
-
-    if (isMongoConfigured()) {
-      try {
-        await connectToDatabase();
-        await EmailVerificationTokenModel.updateOne({ id }, { usedAt: now });
-      } catch {}
-    }
+      expiresAt,
+    });
   },
 
   async findActiveEmailVerificationOtp(
     email: string,
-    type?: string
+    type: string = 'email_verification'
   ): Promise<EmailVerificationToken | undefined> {
     await initAuthDb();
-    const isProduction = process.env.NODE_ENV === 'production';
     const cleanEmail = email.toLowerCase().trim();
+    const isProduction = process.env.NODE_ENV === 'production';
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        const query: any = {
-          email: cleanEmail,
-          usedAt: { $exists: false },
-        };
-        if (type) query.type = type;
-        const found = await EmailVerificationTokenModel.findOne(query).sort({ createdAt: -1 }).lean();
-        if (found && new Date(found.expiresAt).getTime() > Date.now()) {
-          return { ...found, id: (found as any).id, _id: undefined } as EmailVerificationToken;
-        }
+        const found = await prisma.emailVerificationToken.findFirst({
+          where: {
+            email: cleanEmail,
+            type: type as any,
+            usedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (found) return mapPrismaEmailVerificationToken(found);
         if (isProduction) return undefined;
       } catch (err) {
         if (isProduction) {
@@ -1142,307 +1512,285 @@ export const authDb = {
       throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
 
-    return authStore.emailVerificationTokens.find(
-      (t) =>
-        t.email?.toLowerCase() === cleanEmail &&
-        (!type || t.type === type) &&
-        !t.usedAt &&
-        new Date(t.expiresAt).getTime() > Date.now()
-    );
+    const now = Date.now();
+    return authStore.emailVerificationTokens
+      .filter((t) => t.email?.toLowerCase() === cleanEmail && t.type === type && !t.usedAt && new Date(t.expiresAt).getTime() > now)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
   },
 
-  async incrementEmailVerificationOtpAttempts(
+  async findValidEmailVerificationOtp(
     email: string,
-    type?: string
-  ): Promise<{ attempts: number; isLockedOut: boolean }> {
+    otp: string,
+    type: string = 'email_verification'
+  ): Promise<EmailVerificationToken | undefined> {
+    await initAuthDb();
+    const cleanEmail = email.toLowerCase().trim();
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isDatabaseConfigured()) {
+      try {
+        const found = await prisma.emailVerificationToken.findFirst({
+          where: {
+            email: cleanEmail,
+            otp,
+            type: type as any,
+            usedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (found) return mapPrismaEmailVerificationToken(found);
+        if (isProduction) return undefined;
+      } catch (err) {
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while verifying OTP.');
+        }
+      }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
+    }
+
+    const now = Date.now();
+    return authStore.emailVerificationTokens
+      .filter((t) => t.email?.toLowerCase() === cleanEmail && t.otp === otp && t.type === type && !t.usedAt && new Date(t.expiresAt).getTime() > now)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  },
+
+  async findValidEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
-    const cleanEmail = email.toLowerCase().trim();
 
-    if (isProduction) {
-      if (!isMongoConfigured()) {
-        throw new DatabaseUnavailableError('Persistent database is required in production.');
-      }
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        const query: any = { email: cleanEmail, usedAt: { $exists: false } };
-        if (type) query.type = type;
-        const updated = await EmailVerificationTokenModel.findOneAndUpdate(
-          query,
-          { $inc: { attempts: 1 } },
-          { new: true, sort: { createdAt: -1 } }
-        );
-        if (updated) {
-          const attempts = updated.attempts || 1;
-          if (attempts >= 5) {
-            await EmailVerificationTokenModel.updateOne({ id: updated.id }, { usedAt: new Date().toISOString() });
-          }
-          return { attempts, isLockedOut: attempts >= 5 };
-        }
-        return { attempts: 5, isLockedOut: true };
+        const found = await prisma.emailVerificationToken.findFirst({
+          where: {
+            OR: [{ token }, { id: token }],
+            usedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (found) return mapPrismaEmailVerificationToken(found);
+        if (isProduction) return undefined;
       } catch (err) {
-        throw new DatabaseUnavailableError('Database write failed while updating verification attempts.');
-      }
-    }
-
-    const item = authStore.emailVerificationTokens.find(
-      (t) =>
-        t.email?.toLowerCase() === cleanEmail &&
-        (!type || t.type === type) &&
-        !t.usedAt &&
-        new Date(t.expiresAt).getTime() > Date.now()
-    );
-
-    let attempts = 1;
-    if (item) {
-      item.attempts = (item.attempts || 0) + 1;
-      attempts = item.attempts;
-      if (attempts >= 5) {
-        item.usedAt = new Date().toISOString();
-      }
-    }
-
-    if (isMongoConfigured()) {
-      try {
-        await connectToDatabase();
-        const query: any = { email: cleanEmail, usedAt: { $exists: false } };
-        if (type) query.type = type;
-        const updated = await EmailVerificationTokenModel.findOneAndUpdate(
-          query,
-          { $inc: { attempts: 1 } },
-          { new: true, sort: { createdAt: -1 } }
-        );
-        if (updated) {
-          attempts = updated.attempts || attempts;
-          if (attempts >= 5) {
-            await EmailVerificationTokenModel.updateOne({ id: updated.id }, { usedAt: new Date().toISOString() });
-          }
+        if (isProduction) {
+          throw new DatabaseUnavailableError('Database query failed while finding verification token.');
         }
-      } catch {}
+      }
+    } else if (isProduction) {
+      throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
 
-    return { attempts, isLockedOut: attempts >= 5 };
+    const now = Date.now();
+    return authStore.emailVerificationTokens
+      .filter((t) => (t.token === token || t.id === token) && !t.usedAt && new Date(t.expiresAt).getTime() > now)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
   },
 
-  // --------------------------------------------------------------------------
-  // 6-Digit Password Reset OTPs
-  // --------------------------------------------------------------------------
+  async incrementEmailVerificationOtpAttempts(email: string): Promise<{ attempts: number; isLockedOut: boolean }> {
+    const active = await this.findActiveEmailVerificationOtp(email);
+    if (!active) {
+      return { attempts: 0, isLockedOut: false };
+    }
+
+    const attempts = await this.incrementEmailVerificationAttempts(active.id);
+    const isLockedOut = attempts >= 5;
+
+    if (isLockedOut) {
+      await this.markEmailVerificationTokenUsed(active.id);
+    }
+
+    return { attempts, isLockedOut };
+  },
+
+  async markEmailVerificationOtpUsed(targetOtpId: string): Promise<void> {
+    return this.markEmailVerificationTokenUsed(targetOtpId);
+  },
+
   async createPasswordResetOtp(
     userId: string,
     email: string,
     otp: string,
-    expiresMinutes: number = 10
+    expireMinutes: number = 15
   ): Promise<PasswordResetToken> {
-    await initAuthDb();
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cleanEmail = email.toLowerCase().trim();
-
-    const record: PasswordResetToken = {
-      id: `protp-${Date.now()}`,
+    const expiresAt = new Date(Date.now() + expireMinutes * 60000).toISOString();
+    return this.createPasswordResetToken({
       userId,
-      email: cleanEmail,
-      token: otp,
+      email,
+      token: `prt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       otp,
-      attempts: 0,
-      expiresAt: new Date(Date.now() + expiresMinutes * 60000).toISOString(),
-      createdAt: new Date().toISOString(),
-    };
-
-    if (isProduction) {
-      if (!isMongoConfigured()) {
-        throw new DatabaseUnavailableError('Persistent database is required in production.');
-      }
-      try {
-        await connectToDatabase();
-        await PasswordResetTokenModel.deleteMany({ email: cleanEmail, usedAt: { $exists: false } });
-        await PasswordResetTokenModel.create(record);
-        return record;
-      } catch (err) {
-        throw new DatabaseUnavailableError('Database write failed while creating reset OTP.');
-      }
-    }
-
-    authStore.passwordResetTokens = authStore.passwordResetTokens.filter(
-      (t) => !(t.email?.toLowerCase() === cleanEmail && !t.usedAt)
-    );
-    authStore.passwordResetTokens.push(record);
-
-    if (isMongoConfigured()) {
-      try {
-        await connectToDatabase();
-        await PasswordResetTokenModel.deleteMany({ email: cleanEmail, usedAt: { $exists: false } });
-        await PasswordResetTokenModel.create(record);
-      } catch {}
-    }
-
-    return record;
-  },
-
-  async findValidPasswordResetOtp(email: string, otp: string): Promise<PasswordResetToken | undefined> {
-    await initAuthDb();
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cleanEmail = email.toLowerCase().trim();
-    const cleanOtp = otp.trim();
-
-    if (isMongoConfigured()) {
-      try {
-        const found = await PasswordResetTokenModel.findOne({
-          email: cleanEmail,
-          $or: [{ otp: cleanOtp }, { token: cleanOtp }],
-          usedAt: { $exists: false },
-        }).lean();
-        if (found && new Date(found.expiresAt).getTime() > Date.now()) {
-          return { ...found, id: (found as any).id, _id: undefined } as PasswordResetToken;
-        }
-        if (isProduction) return undefined;
-      } catch (err) {
-        if (isProduction) {
-          throw new DatabaseUnavailableError('Database query failed while validating reset OTP.');
-        }
-      }
-    } else if (isProduction) {
-      throw new DatabaseUnavailableError('Persistent database is required in production.');
-    }
-
-    return authStore.passwordResetTokens.find(
-      (t) =>
-        t.email?.toLowerCase() === cleanEmail &&
-        (t.otp === cleanOtp || t.token === cleanOtp) &&
-        !t.usedAt &&
-        new Date(t.expiresAt).getTime() > Date.now()
-    );
-  },
-
-  async markPasswordResetOtpUsed(id: string): Promise<void> {
-    await initAuthDb();
-    const isProduction = process.env.NODE_ENV === 'production';
-    const now = new Date().toISOString();
-
-    if (isProduction) {
-      if (!isMongoConfigured()) {
-        throw new DatabaseUnavailableError('Persistent database is required in production.');
-      }
-      try {
-        await connectToDatabase();
-        await PasswordResetTokenModel.updateOne({ id }, { usedAt: now });
-        return;
-      } catch (err) {
-        throw new DatabaseUnavailableError('Database write failed while marking reset OTP used.');
-      }
-    }
-
-    const item = authStore.passwordResetTokens.find((t) => t.id === id);
-    if (item) item.usedAt = now;
-
-    if (isMongoConfigured()) {
-      try {
-        await connectToDatabase();
-        await PasswordResetTokenModel.updateOne({ id }, { usedAt: now });
-      } catch {}
-    }
+      expiresAt,
+    });
   },
 
   async findActivePasswordResetOtp(email: string): Promise<PasswordResetToken | undefined> {
     await initAuthDb();
-    const isProduction = process.env.NODE_ENV === 'production';
     const cleanEmail = email.toLowerCase().trim();
+    const isProduction = process.env.NODE_ENV === 'production';
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        const found = await PasswordResetTokenModel.findOne({
-          email: cleanEmail,
-          usedAt: { $exists: false },
-        }).sort({ createdAt: -1 }).lean();
-        if (found && new Date(found.expiresAt).getTime() > Date.now()) {
-          return { ...found, id: (found as any).id, _id: undefined } as PasswordResetToken;
-        }
+        const found = await prisma.passwordResetToken.findFirst({
+          where: {
+            email: cleanEmail,
+            usedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (found) return mapPrismaPasswordResetToken(found);
         if (isProduction) return undefined;
       } catch (err) {
         if (isProduction) {
-          throw new DatabaseUnavailableError('Database query failed while fetching active reset OTP.');
+          throw new DatabaseUnavailableError('Database query failed while fetching active password reset OTP.');
         }
       }
     } else if (isProduction) {
       throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
 
-    return authStore.passwordResetTokens.find(
-      (t) =>
-        t.email?.toLowerCase() === cleanEmail &&
-        !t.usedAt &&
-        new Date(t.expiresAt).getTime() > Date.now()
-    );
+    const now = Date.now();
+    return authStore.passwordResetTokens
+      .filter((t) => t.email?.toLowerCase() === cleanEmail && !t.usedAt && new Date(t.expiresAt).getTime() > now)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  },
+
+  async findValidPasswordResetOtp(email: string, otp: string): Promise<PasswordResetToken | undefined> {
+    return this.findPasswordResetTokenByOtp(email, otp);
   },
 
   async incrementPasswordResetOtpAttempts(email: string): Promise<{ attempts: number; isLockedOut: boolean }> {
+    const active = await this.findActivePasswordResetOtp(email);
+    if (!active) {
+      return { attempts: 0, isLockedOut: false };
+    }
+
+    const attempts = await this.incrementPasswordResetAttempts(active.id);
+    const isLockedOut = attempts >= 5;
+
+    if (isLockedOut) {
+      await this.markPasswordResetTokenUsed(active.id);
+    }
+
+    return { attempts, isLockedOut };
+  },
+
+  // Account Lockout
+  async incrementFailedLoginAttempts(
+    email: string,
+    lockoutMinutes: number = 15
+  ): Promise<{ attempts: number; lockoutUntil?: string }> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
     const cleanEmail = email.toLowerCase().trim();
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        const updated = await PasswordResetTokenModel.findOneAndUpdate(
-          { email: cleanEmail, usedAt: { $exists: false } },
-          { $inc: { attempts: 1 } },
-          { new: true, sort: { createdAt: -1 } }
-        );
-        if (updated) {
-          const attempts = updated.attempts || 1;
-          if (attempts >= 5) {
-            await PasswordResetTokenModel.updateOne({ id: updated.id }, { usedAt: new Date().toISOString() });
-          }
-          return { attempts, isLockedOut: attempts >= 5 };
+        const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+        if (!user) return { attempts: 0 };
+
+        const attempts = (user.failedLoginAttempts || 0) + 1;
+        let lockoutUntil: string | undefined = undefined;
+        if (attempts >= 5) {
+          lockoutUntil = new Date(Date.now() + lockoutMinutes * 60000).toISOString();
         }
-        return { attempts: 5, isLockedOut: true };
+
+        await prisma.user.update({
+          where: { email: cleanEmail },
+          data: {
+            failedLoginAttempts: attempts,
+            lockoutUntil: lockoutUntil || null,
+          },
+        });
+        return { attempts, lockoutUntil };
       } catch (err) {
-        throw new DatabaseUnavailableError('Database write failed while updating reset attempts.');
+        throw new DatabaseUnavailableError('Database write failed while recording login attempt.');
       }
     }
 
-    const item = authStore.passwordResetTokens.find(
-      (t) =>
-        t.email?.toLowerCase() === cleanEmail &&
-        !t.usedAt &&
-        new Date(t.expiresAt).getTime() > Date.now()
-    );
+    const user = authStore.users.find((u) => u.email.toLowerCase() === cleanEmail);
+    if (!user) return { attempts: 0 };
 
-    let attempts = 1;
-    if (item) {
-      item.attempts = (item.attempts || 0) + 1;
-      attempts = item.attempts;
-      if (attempts >= 5) {
-        item.usedAt = new Date().toISOString();
-      }
+    user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+    let lockoutUntil: string | undefined = undefined;
+    if (user.failedLoginAttempts >= 5) {
+      lockoutUntil = new Date(Date.now() + lockoutMinutes * 60000).toISOString();
+      user.lockoutUntil = lockoutUntil;
     }
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        const updated = await PasswordResetTokenModel.findOneAndUpdate(
-          { email: cleanEmail, usedAt: { $exists: false } },
-          { $inc: { attempts: 1 } },
-          { new: true, sort: { createdAt: -1 } }
-        );
-        if (updated) {
-          attempts = updated.attempts || attempts;
-          if (attempts >= 5) {
-            await PasswordResetTokenModel.updateOne({ id: updated.id }, { usedAt: new Date().toISOString() });
-          }
-        }
+        await prisma.user.update({
+          where: { email: cleanEmail },
+          data: {
+            failedLoginAttempts: user.failedLoginAttempts,
+            lockoutUntil: lockoutUntil || null,
+          },
+        });
       } catch {}
     }
 
-    return { attempts, isLockedOut: attempts >= 5 };
+    return { attempts: user.failedLoginAttempts, lockoutUntil };
   },
 
-  // --------------------------------------------------------------------------
-  // NGO Accreditation Applications
-  // --------------------------------------------------------------------------
-  async createNGOApplication(data: Omit<NGOApplication, 'id' | 'status' | 'createdAt'>): Promise<NGOApplication> {
+  async resetFailedLoginAttempts(email: string): Promise<void> {
+    await initAuthDb();
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cleanEmail = email.toLowerCase().trim();
+
+    if (isProduction) {
+      if (!isDatabaseConfigured()) {
+        throw new DatabaseUnavailableError('Persistent database is required in production.');
+      }
+      try {
+        await prisma.user.updateMany({
+          where: { email: cleanEmail },
+          data: {
+            failedLoginAttempts: 0,
+            lockoutUntil: null,
+          },
+        });
+        return;
+      } catch (err) {
+        throw new DatabaseUnavailableError('Database write failed while resetting login attempts.');
+      }
+    }
+
+    const user = authStore.users.find((u) => u.email.toLowerCase() === cleanEmail);
+    if (user) {
+      user.failedLoginAttempts = 0;
+      user.lockoutUntil = undefined;
+    }
+
+    if (isDatabaseConfigured()) {
+      try {
+        await prisma.user.updateMany({
+          where: { email: cleanEmail },
+          data: {
+            failedLoginAttempts: 0,
+            lockoutUntil: null,
+          },
+        });
+      } catch {}
+    }
+  },
+
+  isAccountLocked(user: User): { locked: boolean; remainingMinutes?: number } {
+    if (!user.lockoutUntil) return { locked: false };
+    const lockoutTime = new Date(user.lockoutUntil).getTime();
+    const now = Date.now();
+    if (now >= lockoutTime) return { locked: false };
+    const remainingMinutes = Math.ceil((lockoutTime - now) / 60000);
+    return { locked: true, remainingMinutes };
+  },
+
+  // NGO Applications
+  async createNGOApplication(
+    data: Omit<NGOApplication, 'id' | 'createdAt' | 'status'>
+  ): Promise<NGOApplication> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
     const newApp: NGOApplication = {
@@ -1454,61 +1802,107 @@ export const authDb = {
     };
 
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        await NGOApplicationModel.create(newApp);
-        return newApp;
+        const created = await prisma.nGOApplication.create({
+          data: {
+            id: newApp.id,
+            organizationName: newApp.organizationName,
+            registrationNumber: newApp.registrationNumber,
+            focalPersonName: newApp.focalPersonName,
+            focalPersonEmail: newApp.focalPersonEmail,
+            focalPersonPhone: newApp.focalPersonPhone,
+            website: newApp.website,
+            hqAddress: newApp.hqAddress,
+            operationalDistricts: newApp.operationalDistricts || [],
+            reliefCapabilities: newApp.reliefCapabilities || [],
+            documentName: newApp.documentName,
+            documentData: newApp.documentData,
+            status: 'pending',
+            createdAt: new Date(newApp.createdAt),
+          },
+        });
+        return mapPrismaNGOApplication(created);
       } catch (err) {
-        throw new DatabaseUnavailableError('Database write failed while creating NGO application.');
+        throw new DatabaseUnavailableError('Database write failed while saving NGO application.');
       }
     }
 
     authStore.ngoApplications.unshift(newApp);
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        await NGOApplicationModel.create(newApp);
+        const created = await prisma.nGOApplication.create({
+          data: {
+            id: newApp.id,
+            organizationName: newApp.organizationName,
+            registrationNumber: newApp.registrationNumber,
+            focalPersonName: newApp.focalPersonName,
+            focalPersonEmail: newApp.focalPersonEmail,
+            focalPersonPhone: newApp.focalPersonPhone,
+            website: newApp.website,
+            hqAddress: newApp.hqAddress,
+            operationalDistricts: newApp.operationalDistricts || [],
+            reliefCapabilities: newApp.reliefCapabilities || [],
+            documentName: newApp.documentName,
+            documentData: newApp.documentData,
+            status: 'pending',
+            createdAt: new Date(newApp.createdAt),
+          },
+        });
+        return mapPrismaNGOApplication(created);
       } catch (err) {
-        console.warn('Mongo createNGOApplication fallback:', err);
+        console.warn('Prisma createNGOApplication failed, saved in memory:', err);
       }
     }
 
     return newApp;
   },
 
-  async listNGOApplications(status?: 'pending' | 'approved' | 'rejected'): Promise<NGOApplication[]> {
+  async listNGOApplications(status?: string): Promise<NGOApplication[]> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
-    if (isMongoConfigured()) {
+
+    if (isDatabaseConfigured()) {
       try {
-        const query = status ? { status } : {};
-        const list = await NGOApplicationModel.find(query).sort({ createdAt: -1 }).lean();
-        if (list && list.length > 0) {
-          return list.map((a: any) => ({ ...a, id: a.id, _id: undefined }));
+        const apps = await prisma.nGOApplication.findMany({
+          where: status ? { status: status as any } : undefined,
+          orderBy: { createdAt: 'desc' },
+        });
+        if (apps && apps.length > 0) {
+          return apps.map((a) => mapPrismaNGOApplication(a));
         }
         if (isProduction) return [];
       } catch (err) {
         if (isProduction) {
-          throw new DatabaseUnavailableError('Database query failed while listing NGO applications.');
+          throw new DatabaseUnavailableError('Database query failed while fetching NGO applications.');
         }
+        console.warn('Prisma listNGOApplications failed:', err);
       }
     } else if (isProduction) {
       throw new DatabaseUnavailableError('Persistent database is required in production.');
     }
-    return status ? authStore.ngoApplications.filter((a) => a.status === status) : [...authStore.ngoApplications];
+
+    if (status) {
+      return authStore.ngoApplications.filter((a) => a.status === status);
+    }
+    return [...authStore.ngoApplications];
   },
 
-  async findNGOApplicationById(id: string): Promise<NGOApplication | undefined> {
+  async getNGOApplication(id: string): Promise<NGOApplication | undefined> {
     await initAuthDb();
     const isProduction = process.env.NODE_ENV === 'production';
-    if (isMongoConfigured()) {
+
+    if (isDatabaseConfigured()) {
       try {
-        const found = await NGOApplicationModel.findOne({ id }).lean();
-        if (found) return { ...found, id: (found as any).id, _id: undefined } as NGOApplication;
+        const found = await prisma.nGOApplication.findUnique({
+          where: { id },
+        });
+        if (found) {
+          return mapPrismaNGOApplication(found);
+        }
         if (isProduction) return undefined;
       } catch (err) {
         if (isProduction) {
@@ -1526,19 +1920,24 @@ export const authDb = {
     const isProduction = process.env.NODE_ENV === 'production';
     const now = new Date().toISOString();
 
+    const dataToUpdate: any = {
+      updatedAt: new Date(now),
+    };
+    if (updates.status !== undefined) dataToUpdate.status = updates.status as any;
+    if (updates.adminNotes !== undefined) dataToUpdate.adminNotes = updates.adminNotes;
+    if (updates.reviewedBy !== undefined) dataToUpdate.reviewedBy = updates.reviewedBy;
+    if (updates.reviewedAt !== undefined) dataToUpdate.reviewedAt = new Date(updates.reviewedAt);
+
     if (isProduction) {
-      if (!isMongoConfigured()) {
+      if (!isDatabaseConfigured()) {
         throw new DatabaseUnavailableError('Persistent database is required in production.');
       }
       try {
-        await connectToDatabase();
-        const updated = await NGOApplicationModel.findOneAndUpdate(
-          { id },
-          { ...updates, updatedAt: now },
-          { new: true }
-        ).lean();
-        if (updated) return { ...updated, id: (updated as any).id, _id: undefined } as NGOApplication;
-        return undefined;
+        const updated = await prisma.nGOApplication.update({
+          where: { id },
+          data: dataToUpdate,
+        });
+        return mapPrismaNGOApplication(updated);
       } catch (err) {
         throw new DatabaseUnavailableError('Database write failed while updating NGO application.');
       }
@@ -1549,15 +1948,13 @@ export const authDb = {
       Object.assign(app, updates, { updatedAt: now });
     }
 
-    if (isMongoConfigured()) {
+    if (isDatabaseConfigured()) {
       try {
-        await connectToDatabase();
-        const updated = await NGOApplicationModel.findOneAndUpdate(
-          { id },
-          { ...updates, updatedAt: now },
-          { new: true }
-        ).lean();
-        if (updated) return { ...updated, id: (updated as any).id, _id: undefined } as NGOApplication;
+        const updated = await prisma.nGOApplication.update({
+          where: { id },
+          data: dataToUpdate,
+        });
+        return mapPrismaNGOApplication(updated);
       } catch {}
     }
 
@@ -1591,5 +1988,21 @@ export const authDb = {
       password: data.password,
       isEmailVerified: data.isEmailVerified ?? false,
     });
+  },
+
+  async findNGOApplicationById(id: string): Promise<NGOApplication | undefined> {
+    return this.getNGOApplication(id);
+  },
+
+  async revokeTokenFamily(familyId: string): Promise<void> {
+    return this.revokeFamily(familyId);
+  },
+
+  async findValidPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    return this.findPasswordResetToken(token);
+  },
+
+  async markPasswordResetOtpUsed(tokenId: string): Promise<void> {
+    return this.markPasswordResetTokenUsed(tokenId);
   },
 };

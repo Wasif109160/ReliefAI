@@ -8,7 +8,7 @@ import { verifyAccessToken, signAccessToken, signRefreshToken } from '@/lib/serv
 import { COOKIE_ACCESS_TOKEN, setAuthCookies } from '@/lib/server/cookies';
 import { getClientIp } from '@/lib/server/security';
 import { assertShowcaseMutation } from '@/lib/server/demo-policy';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 const ChangePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),

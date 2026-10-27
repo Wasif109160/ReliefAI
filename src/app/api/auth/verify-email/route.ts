@@ -6,7 +6,7 @@ import { signAccessToken, signRefreshToken } from '@/lib/server/jwt';
 import { setAuthCookies } from '@/lib/server/cookies';
 import { securityUtils, getClientIp } from '@/lib/server/security';
 import { assertShowcaseMutation } from '@/lib/server/demo-policy';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 const ROLE_DASHBOARDS: Record<string, string> = {
   citizen: '/dashboard/citizen',
@@ -162,7 +162,11 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     if (isDatabaseUnavailableError(error)) {
-      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+      console.error('[ReliefAI Verify-Email API] Database service unavailable:', error instanceof Error ? error.message : error);
+      return NextResponse.json(
+        { error: 'Database service is currently unavailable. Please try again shortly.', code: 'DATABASE_UNAVAILABLE' },
+        { status: 503 }
+      );
     }
     console.error('Email verification error:', error);
     return NextResponse.json(

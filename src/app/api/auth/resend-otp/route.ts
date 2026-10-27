@@ -4,7 +4,7 @@ import { authDb } from '@/lib/server/auth-db';
 import { emailService } from '@/lib/server/email-service';
 import { securityUtils } from '@/lib/server/security';
 import { assertShowcaseMutation } from '@/lib/server/demo-policy';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 const ResendSchema = z.object({
   email: z.string().email('Please enter a valid email address'),

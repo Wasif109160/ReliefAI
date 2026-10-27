@@ -291,6 +291,7 @@ export interface AidDonation {
   impactMetrics?: string;
   txHash: string;
   transactionHash?: string;
+  channel?: string;
   isVerified?: boolean;
 }
 

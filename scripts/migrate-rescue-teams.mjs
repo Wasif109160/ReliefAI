@@ -1,6 +1,6 @@
 // scripts/migrate-rescue-teams.mjs
 // ==============================================================================
-// ReliefAI — Safe, Repeatable Rescue Personnel Team Migration Tool
+// ReliefAI — Safe, Repeatable Rescue Personnel Team Migration Tool (PostgreSQL / Prisma)
 // ==============================================================================
 // Purpose:
 // Safely migrate existing operational rescue personnel who lack assignedTeamId.
@@ -12,7 +12,7 @@
 // - Refuses production writes without explicit confirmation flags.
 // ==============================================================================
 
-import mongoose from 'mongoose';
+import { PrismaClient } from '@prisma/client';
 
 // Verified deterministic unit roster mapping table
 // Only unambiguous, officially issued organizational badges/units are mapped automatically.
@@ -147,7 +147,7 @@ export function evaluateUserTeamAssignment(user, availableTeams) {
 export async function runMigration(options = {}) {
   const isExecute = options.execute === true;
   const isDryRun = !isExecute;
-  const mongoUri = options.mongoUri || process.env.MONGODB_URI;
+  const databaseUrl = options.databaseUrl || process.env.DATABASE_URL;
 
   console.log('=============================================================');
   console.log(' ReliefAI Rescue Personnel Team Assignment Migration Tool   ');
@@ -162,19 +162,21 @@ export async function runMigration(options = {}) {
 
   let users = [];
   let teams = [];
-  let dbConnection = null;
+  let prisma = null;
 
-  if (mongoUri && mongoUri.trim().length > 0) {
-    console.log(`Connecting to MongoDB: ${mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@')}...`);
-    dbConnection = await mongoose.connect(mongoUri);
-    console.log(`Connected to database: ${dbConnection.connection.name || 'default'}\n`);
-
-    // Import models dynamically if using Mongo
-    const { UserModel, ResponderModel } = await import('../src/lib/models/index.ts');
-    users = await UserModel.find({ role: { $in: ['rescue_team', 'responder'] } }).lean();
-    teams = await ResponderModel.find({}).lean();
+  if (databaseUrl && databaseUrl.trim().length > 0) {
+    console.log('Connecting to PostgreSQL via Prisma...');
+    prisma = new PrismaClient({
+      datasources: {
+        db: { url: databaseUrl },
+      },
+    });
+    users = await prisma.user.findMany({
+      where: { role: { in: ['rescue_team', 'responder'] } },
+    });
+    teams = await prisma.responderTeam.findMany();
   } else {
-    console.log('No MONGODB_URI configured. Running evaluation against representative operational personnel fixtures...');
+    console.log('No DATABASE_URL configured. Running evaluation against representative operational personnel fixtures...');
     // Representative seed fixtures for standalone / dry-run evaluation
     users = [
       {
@@ -289,10 +291,12 @@ export async function runMigration(options = {}) {
   // Execute database updates if execute mode is active
   if (isExecute && results.migratable.length > 0) {
     console.log(`Applying updates for ${results.migratable.length} users to database...`);
-    if (dbConnection) {
-      const { UserModel } = await import('../src/lib/models/index.ts');
+    if (prisma) {
       for (const item of results.migratable) {
-        await UserModel.updateOne({ id: item.userId }, { $set: { assignedTeamId: item.teamId } });
+        await prisma.user.update({
+          where: { id: item.userId },
+          data: { assignedTeamId: item.teamId },
+        });
         console.log(`  ✓ Updated ${item.userId} with assignedTeamId: ${item.teamId}`);
       }
     }
@@ -302,8 +306,8 @@ export async function runMigration(options = {}) {
     console.log('To apply these changes, re-run with --execute (and --confirm-production if in production).\n');
   }
 
-  if (dbConnection) {
-    await mongoose.disconnect();
+  if (prisma) {
+    await prisma.$disconnect();
   }
 
   return results;
@@ -318,12 +322,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(currentFil
   const args = process.argv.slice(2);
   const isExecute = args.includes('--execute');
   const confirmProduction = args.includes('--confirm-production');
-  const uriArg = args.find((a) => a.startsWith('--mongo-uri='))?.split('=')[1];
+  const uriArg = args.find((a) => a.startsWith('--database-url='))?.split('=')[1];
 
   runMigration({
     execute: isExecute,
     confirmProduction,
-    mongoUri: uriArg,
+    databaseUrl: uriArg,
   }).catch((err) => {
     console.error('Migration failed:', err);
     process.exit(1);

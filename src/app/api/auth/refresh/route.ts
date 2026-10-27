@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { authDb } from '@/lib/server/auth-db';
 import { verifyRefreshToken, signAccessToken, signRefreshToken } from '@/lib/server/jwt';
 import { setAuthCookies, clearAuthCookies, COOKIE_REFRESH_TOKEN } from '@/lib/server/cookies';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 export async function POST() {
   try {

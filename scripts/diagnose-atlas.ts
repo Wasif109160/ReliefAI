@@ -37,7 +37,7 @@ function getAtlasDomain(): string {
   const uri = process.env.MONGODB_URI || '';
   const match = uri.match(/@([^/?#]+)/);
   if (match && match[1].includes('mongodb.net')) return match[1];
-  return 'cluster0.mongodb.net';
+  return 'cluster0.nco6w4z.mongodb.net';
 }
 
 const ATLAS_SRV_DOMAIN = getAtlasDomain();

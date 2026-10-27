@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/server/rbac';
 import { authDb } from '@/lib/server/auth-db';
 import { assertShowcaseMutation } from '@/lib/server/demo-policy';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 const VALID_STATUSES = ['available', 'dispatched', 'en_route', 'on_scene', 'off_duty'] as const;
 

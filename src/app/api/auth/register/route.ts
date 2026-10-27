@@ -5,7 +5,7 @@ import { authDb } from '@/lib/server/auth-db';
 import { emailService } from '@/lib/server/email-service';
 import { securityUtils } from '@/lib/server/security';
 import { assertShowcaseMutation } from '@/lib/server/demo-policy';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 const RegisterSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -100,7 +100,11 @@ export async function POST(req: Request) {
     );
   } catch (error) {
     if (isDatabaseUnavailableError(error)) {
-      return NextResponse.json({ error: 'Database unavailable', code: 'DATABASE_UNAVAILABLE' }, { status: 503 });
+      console.error('[ReliefAI Register API] Database service unavailable:', error instanceof Error ? error.message : error);
+      return NextResponse.json(
+        { error: 'Database service is currently unavailable. Please try again shortly.', code: 'DATABASE_UNAVAILABLE' },
+        { status: 503 }
+      );
     }
     console.error('Registration error:', error);
     return NextResponse.json(

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authDb } from '@/lib/server/auth-db';
 import { emailService } from '@/lib/server/email-service';
 import { assertShowcaseMutation } from '@/lib/server/demo-policy';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 const NGOApplySchema = z.object({
   organizationName: z.string().min(2, 'Organization name is required'),

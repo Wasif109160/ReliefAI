@@ -3,7 +3,7 @@ import { AIService } from '@/lib/ai/ai-service';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/server/rbac';
 import { securityUtils, getClientIp } from '@/lib/server/security';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 export async function POST(req: Request) {
   const auth = await requireAuth();

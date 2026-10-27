@@ -4,7 +4,7 @@ import { AIService } from '@/lib/ai/ai-service';
 import { securityUtils, getClientIp } from '@/lib/server/security';
 import { requireAuth } from '@/lib/server/rbac';
 import { assertShowcaseMutation } from '@/lib/server/demo-policy';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 export async function GET(req: Request) {
   const auth = await requireAuth(['admin', 'government', 'rescue_team', 'commander', 'responder', 'ngo']);

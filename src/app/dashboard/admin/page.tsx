@@ -114,6 +114,29 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!window.confirm(`Are you sure you want to delete user "${userName}"?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/users?userId=${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage(`User "${userName}" deleted successfully.`);
+        fetchUsers();
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        setMessage(data.error || 'Failed to delete user.');
+        setTimeout(() => setMessage(null), 4000);
+      }
+    } catch {
+      setMessage('Network error deleting user.');
+      setTimeout(() => setMessage(null), 4000);
+    }
+  };
+
   const handleReviewNGO = async (id: string, action: 'approve' | 'reject') => {
     try {
       const res = await fetch(`/api/admin/ngo-applications/${id}/review`, {
@@ -518,15 +541,26 @@ export default function AdminDashboard() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => {
-                            setEditingUserId(u.id);
-                            setSelectedRole(u.role);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition shadow-xs"
-                        >
-                          Modify
-                        </button>
+                        <div className="flex items-center justify-end space-x-1.5">
+                          <button
+                            onClick={() => {
+                              setEditingUserId(u.id);
+                              setSelectedRole(u.role);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition shadow-xs"
+                          >
+                            Modify
+                          </button>
+                          {u.id !== user?.id && (
+                            <button
+                              onClick={() => handleDeleteUser(u.id, u.name)}
+                              className="px-2 py-1 rounded-lg bg-white border border-red-200 hover:bg-red-50 text-red-600 text-xs font-semibold transition shadow-xs"
+                              title="Delete user"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>

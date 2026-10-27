@@ -5,7 +5,7 @@ import { authDb } from '@/lib/server/auth-db';
 import { verifyAccessToken, verifyRefreshToken, signAccessToken, signRefreshToken } from '@/lib/server/jwt';
 import { setAuthCookies, COOKIE_ACCESS_TOKEN, COOKIE_REFRESH_TOKEN } from '@/lib/server/cookies';
 import { assertShowcaseMutation } from '@/lib/server/demo-policy';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 export async function GET(req: Request) {
   try {

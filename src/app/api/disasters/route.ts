@@ -3,7 +3,7 @@ import { requireAuth } from '@/lib/server/rbac';
 import { db } from '@/lib/db';
 import { disasterService, DisasterFilter } from '@/lib/services/disaster-service';
 import { assertShowcaseMutation } from '@/lib/server/demo-policy';
-import { isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseUnavailableError } from '@/lib/prisma';
 
 export async function GET(req: Request) {
   try {

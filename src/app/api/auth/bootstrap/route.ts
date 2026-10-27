@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { authDb } from '@/lib/server/auth-db';
-import { connectToDatabase, isMongoConfigured, isDatabaseUnavailableError } from '@/lib/mongodb';
+import { isDatabaseConfigured, checkDatabaseHealth, isDatabaseUnavailableError } from '@/lib/prisma';
 import { securityUtils, getClientIp } from '@/lib/server/security';
 import { assertShowcaseMutation } from '@/lib/server/demo-policy';
 
@@ -76,11 +76,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. If MongoDB is configured, ensure persistent storage is healthy before bootstrapping
-    if (isMongoConfigured()) {
+    // 4. If PostgreSQL is configured, ensure persistent storage is healthy before bootstrapping
+    if (isDatabaseConfigured()) {
       try {
-        const conn = await connectToDatabase();
-        if (!conn) {
+        const health = await checkDatabaseHealth();
+        if (!health.healthy) {
           return NextResponse.json(
             { error: 'Database service is unavailable. Bootstrap aborted to preserve persistence integrity.', code: 'DATABASE_UNAVAILABLE' },
             { status: 503 }
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         }
       } catch (err: any) {
         return NextResponse.json(
-          { error: `Database connection failure: ${err.message || 'Unable to reach MongoDB'}`, code: 'DATABASE_CONNECTION_ERROR' },
+          { error: `Database connection failure: ${err.message || 'Unable to reach PostgreSQL'}`, code: 'DATABASE_CONNECTION_ERROR' },
           { status: 503 }
         );
       }

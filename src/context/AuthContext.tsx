@@ -39,18 +39,17 @@ const AuthContext = createContext<AuthContextType>({
   updateProfile: async () => ({ success: false }),
 });
 
+import { authApi } from '@/lib/api-client';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Fetch current user from /api/auth/me
+  // Fetch current user from /auth/me
   const refreshUser = useCallback(async () => {
     try {
-      const res = await fetch('/api/auth/me', {
-        credentials: 'include',
-        cache: 'no-store',
-      });
+      const res = await authApi.me();
       if (res.ok) {
         const data = await res.json();
         setUser(data.user || null);
@@ -73,15 +72,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          credentials: 'include',
-        });
+        const res = await authApi.refresh();
         if (res.ok) {
           const data = await res.json();
+          if (data.accessToken && typeof window !== 'undefined') {
+            localStorage.setItem('reliefai_token', data.accessToken);
+          }
           if (data.user) setUser(data.user);
         } else if (res.status === 401) {
-          // Token expired or invalid
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('reliefai_token');
+          }
           setUser(null);
         }
       } catch (e) {
@@ -97,21 +98,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string, rememberMe = false) => {
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, rememberMe }),
-      });
+      const res = await authApi.login(email, password, rememberMe);
       const data = await res.json();
       if (!res.ok) {
         return {
           success: false,
-          error: data.error || 'Login failed',
+          error: data.error || data.message || 'Login failed',
           code: data.code,
           requiresVerification: data.requiresVerification,
           email: data.email || email,
         };
+      }
+      if (data.accessToken && typeof window !== 'undefined') {
+        localStorage.setItem('reliefai_token', data.accessToken);
       }
       setUser(data.user);
       return { success: true };
@@ -131,15 +130,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     assignedZone?: string;
   }) => {
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      const res = await authApi.register(formData);
       const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || 'Registration failed' };
+        return { success: false, error: data.error || data.message || 'Registration failed' };
+      }
+      if (data.accessToken && typeof window !== 'undefined') {
+        localStorage.setItem('reliefai_token', data.accessToken);
       }
       setUser(data.user);
       return { success: true, verificationUrl: data.verificationUrl };
@@ -150,10 +147,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      await authApi.logout();
     } catch (e) {
       console.error('Logout error:', e);
     } finally {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('reliefai_token');
+      }
       setUser(null);
       router.push('/auth/login');
     }
@@ -182,15 +182,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateProfile = async (updates: Partial<User>) => {
     try {
-      const res = await fetch('/api/auth/me', {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
+      const res = await authApi.updateProfile(updates);
       const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || 'Profile update failed' };
+        return { success: false, error: data.error || data.message || 'Profile update failed' };
       }
       setUser(data.user);
       return { success: true };
@@ -198,6 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: 'Network error updating profile' };
     }
   };
+
 
   const currentRole: UserRole = user?.role || 'citizen';
   const isAuthenticated = Boolean(user);

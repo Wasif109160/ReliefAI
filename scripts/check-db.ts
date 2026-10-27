@@ -1,23 +1,24 @@
-import { connectToDatabase, isMongoConfigured } from '../src/lib/mongodb';
-import { UserModel } from '../src/lib/models/User';
+import { prisma, isDatabaseConfigured, checkDatabaseHealth } from '../src/lib/prisma';
 import { authDb } from '../src/lib/server/auth-db';
 
 async function main() {
-  console.log('isMongoConfigured:', isMongoConfigured());
-  let mongoConnected = false;
+  console.log('isDatabaseConfigured (PostgreSQL):', isDatabaseConfigured());
+  let dbConnected = false;
   try {
-    const conn = await connectToDatabase();
-    if (conn) {
-      mongoConnected = true;
-      console.log('MongoDB connection SUCCESSFUL.');
-      const usersInMongo = await UserModel.find({}).lean();
-      console.log(`Found ${usersInMongo.length} users in MongoDB:`);
-      for (const u of usersInMongo) {
+    const health = await checkDatabaseHealth();
+    if (health.healthy) {
+      dbConnected = true;
+      console.log(`PostgreSQL connection SUCCESSFUL (Latency: ${health.latencyMs}ms).`);
+      const usersInPostgres = await prisma.user.findMany();
+      console.log(`Found ${usersInPostgres.length} users in PostgreSQL:`);
+      for (const u of usersInPostgres) {
         console.log(`- Email: ${u.email}, Role: ${u.role}, Verified: ${u.isEmailVerified}`);
       }
+    } else {
+      console.log('PostgreSQL connection check reported unhealthy:', health.error);
     }
   } catch (err: any) {
-    console.log('MongoDB connection FAILED or not running:', err.message);
+    console.log('PostgreSQL connection FAILED:', err.message);
   }
 
   console.log('\nChecking authDb.getAllUsers():');
@@ -27,9 +28,8 @@ async function main() {
     console.log(`- Email: ${u.email}, Role: ${u.role}, Verified: ${u.isEmailVerified}`);
   }
 
-  if (mongoConnected) {
-    const mongoose = (await import('mongoose')).default;
-    await mongoose.disconnect();
+  if (dbConnected) {
+    await prisma.$disconnect();
   }
 
   process.exit(0);

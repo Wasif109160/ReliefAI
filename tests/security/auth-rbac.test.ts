@@ -331,4 +331,60 @@ describe('ReliefAI Security & RBAC Test Suite', () => {
       assert.ok(validPass.length >= 8, 'Valid password must be at least 8 characters');
     });
   });
+
+  // =========================================================================
+  // TASK 9: User CRUD Verification (Create, Read, Update, Delete)
+  // =========================================================================
+  describe('TASK 9: Complete User CRUD Life Cycle', () => {
+    test('Successfully executes Create, Read, Update, and Delete operations on authDb', async () => {
+      const uniqueSuffix = Date.now();
+      const testEmail = `crud.test.${uniqueSuffix}@relief.ai`;
+
+      // 1. CREATE USER
+      const created = await authDb.createUser({
+        name: 'CRUD Test Citizen',
+        displayName: 'Test Citizen User',
+        email: testEmail,
+        password: 'CrudTestPassword123!',
+        role: 'citizen',
+        phone: '+8801700000000',
+        assignedZone: 'Dhaka Central',
+      });
+      assert.ok(created);
+      assert.ok(created.id);
+      assert.strictEqual(created.email, testEmail);
+
+      // 2. READ USER (by ID and by Email)
+      const readById = await authDb.findUserById(created.id);
+      assert.ok(readById);
+      assert.strictEqual(readById.id, created.id);
+      assert.strictEqual(readById.email, testEmail);
+
+      const readByEmail = await authDb.findUserByEmail(testEmail);
+      assert.ok(readByEmail);
+      assert.strictEqual(readByEmail.id, created.id);
+
+      // 3. UPDATE USER
+      const updated = await authDb.updateUser(created.id, {
+        displayName: 'Updated Citizen Name',
+        phone: '+8801799999999',
+        isEmailVerified: true,
+      });
+      assert.ok(updated);
+      assert.strictEqual(updated.displayName, 'Updated Citizen Name');
+      assert.strictEqual(updated.phone, '+8801799999999');
+      assert.strictEqual(updated.isEmailVerified, true);
+
+      // 4. DELETE USER
+      const deleted = await authDb.deleteUser(created.id);
+      assert.strictEqual(deleted, true);
+
+      // Verify user no longer exists
+      const readAfterDelete = await authDb.findUserById(created.id);
+      assert.strictEqual(readAfterDelete, undefined, 'User must not exist after deletion');
+
+      const readByEmailAfterDelete = await authDb.findUserByEmail(testEmail);
+      assert.strictEqual(readByEmailAfterDelete, undefined, 'User must not be found by email after deletion');
+    });
+  });
 });
