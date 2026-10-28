@@ -29,6 +29,15 @@ const PROTECTED_ROUTE_ROLES: { prefix: string; roles: string[] }[] = [
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // These old handlers use a different identity database, not the NestJS authority.
+  const legacyAuthPaths = [
+    '/api/auth/bootstrap', '/api/auth/dev-outbox', '/api/auth/forgot-password',
+    '/api/auth/reset-password', '/api/auth/resend-otp', '/api/auth/verify-email',
+    '/api/auth/request-email-change', '/api/auth/verify-email-change',
+  ];
+  if (legacyAuthPaths.includes(pathname)) {
+    return NextResponse.json({ error: 'This account workflow is unavailable until migrated to the authentication service.', code: 'AUTH_WORKFLOW_UNAVAILABLE' }, { status: 503 });
+  }
   const origin = request.headers.get('origin');
   const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
@@ -37,8 +46,7 @@ export async function middleware(request: NextRequest) {
 
   const isOriginAllowed =
     !origin ||
-    allowedOrigins.length === 0 ||
-    allowedOrigins.includes('*') ||
+    origin === request.nextUrl.origin ||
     allowedOrigins.includes(origin);
 
   const corsOrigin = isOriginAllowed ? (origin || '*') : allowedOrigins[0] || '*';
