@@ -37,9 +37,14 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    const backendUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+    const rawBackendUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+    const backendUrl = rawBackendUrl.replace(/\/+$/, '');
     return {
       beforeFiles: [
+        {
+          source: '/api/health',
+          destination: `${backendUrl}/health`,
+        },
         {
           source: '/api/auth/login',
           destination: `${backendUrl}/auth/login`,
