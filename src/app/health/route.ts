@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { checkDatabaseHealth, isDatabaseConfigured } from '@/lib/prisma';
 
 // Next.js 16 dynamic health probe compatible with cacheComponents
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   const startTime = Date.now();
   const dbConfigured = isDatabaseConfigured();
   const isProduction = process.env.NODE_ENV === 'production';
