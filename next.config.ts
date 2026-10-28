@@ -21,26 +21,17 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
-      {
-        source: "/api/:path*",
-        headers: [
-          { key: "Access-Control-Allow-Credentials", value: "true" },
-          { key: "Access-Control-Allow-Origin", value: process.env.ALLOWED_ORIGINS || "*" },
-          { key: "Access-Control-Allow-Methods", value: "GET,POST,PUT,PATCH,DELETE,OPTIONS" },
-          {
-            key: "Access-Control-Allow-Headers",
-            value:
-              "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-User-Role, X-Mesh-Node-ID",
-          },
-        ],
-      },
     ];
   },
   async rewrites() {
-    const rawBackendUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+    const rawBackendUrl = process.env.INTERNAL_API_URL || 'http://localhost:5001';
     const backendUrl = rawBackendUrl.replace(/\/+$/, '');
     return {
       beforeFiles: [
+        {
+          source: '/api/auth/profile',
+          destination: `${backendUrl}/auth/profile`,
+        },
         {
           source: '/api/health',
           destination: `${backendUrl}/health`,

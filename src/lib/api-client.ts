@@ -10,9 +10,10 @@ import { UserRole, User } from './types';
 
 export function getApiBaseUrl(): string {
   if (typeof window === 'undefined') {
-    return process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+    return process.env.INTERNAL_API_URL || 'http://localhost:5001';
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+  // Browser calls stay on the frontend origin so HttpOnly cookies reach middleware.
+  return '/api';
 }
 
 /**
@@ -44,29 +45,25 @@ export function apiUrl(endpoint: string): string {
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
   const url = apiUrl(endpoint);
-  const defaultHeaders: Record<string, string> = {
-    Accept: 'application/json',
-  };
+  const headers = new Headers(options.headers);
+  if (!headers.has('Accept')) headers.set('Accept', 'application/json');
 
-  if (options.body && typeof options.body === 'string' && !options.headers) {
-    defaultHeaders['Content-Type'] = 'application/json';
+  if (options.body && typeof options.body === 'string' && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
   }
 
   // If client-side token exists in localStorage, pass as Bearer token
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('reliefai_token');
-    if (token && !options.headers) {
-      defaultHeaders['Authorization'] = `Bearer ${token}`;
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
     }
   }
 
   const mergedOptions: RequestInit = {
     credentials: 'include',
     ...options,
-    headers: {
-      ...defaultHeaders,
-      ...options.headers,
-    },
+    headers,
   };
 
   return fetch(url, mergedOptions);

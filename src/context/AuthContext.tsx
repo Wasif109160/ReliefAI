@@ -49,7 +49,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Fetch current user from /auth/me
   const refreshUser = useCallback(async () => {
     try {
-      const res = await authApi.me();
+      let res = await authApi.me();
+      if (res.status === 401) {
+        const refreshed = await authApi.refresh();
+        if (refreshed.ok) res = await authApi.me();
+      }
       if (res.ok) {
         const data = await res.json();
         setUser(data.user || null);
